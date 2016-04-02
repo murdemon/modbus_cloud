@@ -68,7 +68,7 @@ def save_csv(val, sensor_num):
                                  "Functional Group Name": config.get('Sensor_'+str(sensor_num),'Functional Group Name'),\
                                  "Organization Name": config.get('Sensor_'+str(sensor_num),'Organization Name'),\
                                  "Organization Number": config.get('Sensor_'+str(sensor_num),'Organization Number'),\
-                                 "Value": 0 if val == -9999 else val,\
+                                 "Value": 0 if val == -9999 else str('%.2f' % val),\
                                  "Datetime": datetime_now,\
                                  "Grower": config.get('Sensor_'+str(sensor_num),'Grower'),\
                                  "GrowerRecordId": config.get('Sensor_'+str(sensor_num),'GrowerRecordId'),\
@@ -102,6 +102,15 @@ def convert(i):
     fp = cast(cp, POINTER(c_float))  # cast the int pointer to a float pointer
     return fp.contents.value         # dereference the pointer, get the float
 
+#-------------------------------------#
+#Convert float to in16
+#-------------------------------------#
+def convert_i(i):   
+    cp = pointer(c_float(i))         # make this into a c float
+    fp = cast(cp, POINTER(c_int))    # cast the int pointer to a int pointer
+    return fp.contents.value         # dereference the pointer, get the int
+
+
 #---------------------------------------------------------------------------# 
 # define your callback process
 #---------------------------------------------------------------------------# 
@@ -112,7 +121,7 @@ def updating_cloud(a):
     global csvfile
     global writer
     global new_data
-    data_was_updated = 0
+    data_was_updated = 1
 
     if new_data == 1:
         csvfile.close()
@@ -131,8 +140,13 @@ def updating_cloud(a):
                         csvfile = open('setSensorData.csv', 'wb')
 			new_data = 0
 			data_was_updated = 1
-                if r.status_code == 404:
+                elif r.status_code == 404:
                         csvfile = open('setSensorData.csv', 'ab')
+			new_data = 0
+		else: 
+		        csvfile = open('setSensorData.csv', 'ab') 
+			new_data = 0
+
         except requests.exceptions.Timeout:
                 log.info("Timeout POST Sensor 1 data to Cloud")
                 csvfile = open('setSensorData.csv', 'ab')
@@ -144,7 +158,25 @@ def updating_cloud(a):
 	#----------------------------------------------------------------#
 	# Ask command for devices (first getState then if ok resetState)
 	#----------------------------------------------------------------#
-	data_was_updating = 0
+	   context  = a[0]
+	   register = 3
+    	   slave_id = 0x00
+    	   address  = 0x1000
+    	   values_w   = context[slave_id].getValues(register, address, count=40)
+
+	   for i in range(0, 20):
+
+	   	b = values_w[i*2]*65536+values_w[i*2+1]
+	   	newval = convert(b)
+	   	newval = newval + 1
+	   	bi = convert_i(newval)
+	   	values_w[i*2] = bi/65536
+	   	values_w[i*2+1] = bi - 65536*values_w[i*2]
+	
+
+	   context[slave_id].setValues(register, address, values_w)
+	   
+	   data_was_updating = 0
 
 	
 #---------------------------------------------------------------------#
@@ -156,7 +188,7 @@ def check_val_change(old_1, new_1, old_2, new_2,sensor_num):
     	if old_1 <> new_1 or old_2 <> new_2:
 	        b = new_1*65536+new_2
 	        newval = convert(b)
-	        log.info("We get new sensor "+str(sensor_num)+" data: " + str(round(newval,2)))
+	        log.info("We get new sensor "+str(sensor_num)+" data: " + str('%.2f' % newval))
 	        save_csv(newval,1)
 	        new_data = 1
 
