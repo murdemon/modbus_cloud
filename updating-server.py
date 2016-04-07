@@ -60,6 +60,8 @@ def save_csv(val, sensor_num):
 		dt = datetime.now()
 		timestamp = _time.mktime(dt.timetuple())
 		datetime_now = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+		OutLim = val >  float(config.get('Sensor_'+str(sensor_num),'Sensor High Limit')) or val < float(config.get('Sensor_'+str(sensor_num),'Sensor Low Limit'))
+		                                    
 		writer.writerow({"Operation": config.get('Sensor_'+str(sensor_num),'Operation'),\
 				 "Flag": config.get('Sensor_'+str(sensor_num),'Flag'),\
 				 "ObjectId": config.get('Sensor_'+str(sensor_num),'ObjectId'),\
@@ -85,7 +87,8 @@ def save_csv(val, sensor_num):
                                  "SensorType": config.get('Sensor_'+str(sensor_num),'SensorType'),\
                                  "Sensor High Limit": config.get('Sensor_'+str(sensor_num),'Sensor High Limit'),\
                                  "Sensor Low Limit": config.get('Sensor_'+str(sensor_num),'Sensor Low Limit'),\
-                                 "Sensor Alert": str('yes' if val == -9999 else 'no'),\
+                                 "Sensor Alert": str('yes' if OutLim == True else 'no'),\
+		                                #"Sensor Alert": str('yes' if val == -9999 else 'no'),\
 						# config.get('Sensor_'+str(sensor_num),'Sensor Alert'),\
 				 "Alert SMS Carrier": config.get('Sensor_'+str(sensor_num),'Alert SMS Carrier'),\
                                  "Alert SMS Message": config.get('Sensor_'+str(sensor_num),'Alert SMS Message'),\
@@ -211,7 +214,8 @@ def updating_writer(a):
 #-------------------------------------------------------------#
 # if we have savi it to CSV and give command to send in Cloud
 #-------------------------------------------------------------#
-    for i in range(0, 20):
+#    for i in range(0, 20):
+    for i in range(0, 1):
 	check_val_change(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
 
     old_values = values
