@@ -60,6 +60,8 @@ def save_csv(val, sensor_num):
 		dt = datetime.now()
 		timestamp = _time.mktime(dt.timetuple())
 		datetime_now = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+		OutLim = val >  float(config.get('Sensor_'+str(sensor_num),'Sensor High Limit')) or val < float(config.get('Sensor_'+str(sensor_num),'Sensor Low Limit'))
+		                                    
 		writer.writerow({"Operation": config.get('Sensor_'+str(sensor_num),'Operation'),\
 				 "Flag": config.get('Sensor_'+str(sensor_num),'Flag'),\
 				 "ObjectId": config.get('Sensor_'+str(sensor_num),'ObjectId'),\
@@ -85,7 +87,8 @@ def save_csv(val, sensor_num):
                                  "SensorType": config.get('Sensor_'+str(sensor_num),'SensorType'),\
                                  "Sensor High Limit": config.get('Sensor_'+str(sensor_num),'Sensor High Limit'),\
                                  "Sensor Low Limit": config.get('Sensor_'+str(sensor_num),'Sensor Low Limit'),\
-                                 "Sensor Alert": str('yes' if val == -9999 else 'no'),\
+                                 "Sensor Alert": str('yes' if OutLim == True else 'no'),\
+		                                #"Sensor Alert": str('yes' if val == -9999 else 'no'),\
 						# config.get('Sensor_'+str(sensor_num),'Sensor Alert'),\
 				 "Alert SMS Carrier": config.get('Sensor_'+str(sensor_num),'Alert SMS Carrier'),\
                                  "Alert SMS Message": config.get('Sensor_'+str(sensor_num),'Alert SMS Message'),\
@@ -121,7 +124,7 @@ def updating_cloud(a):
     global csvfile
     global writer
     global new_data
-    data_was_updated = 1
+    data_was_updated = 0
 
     if new_data == 1:
         csvfile.close()
@@ -164,15 +167,18 @@ def updating_cloud(a):
     	   address  = 0x1000
     	   values_w   = context[slave_id].getValues(register, address, count=40)
 
-	   for i in range(0, 20):
+	#   for i in range(0, 20):
 
-	   	b = values_w[i*2]*65536+values_w[i*2+1]
-	   	newval = convert(b)
-	   	newval = newval + 1
-	   	bi = convert_i(newval)
-	   	values_w[i*2] = bi/65536
-	   	values_w[i*2+1] = bi - 65536*values_w[i*2]
-	
+	#   	b = values_w[i*2]*65536+values_w[i*2+1]
+	#   	newval = convert(b)
+	#   	newval = newval + 1
+	#   	bi = convert_i(newval)
+	#   	values_w[i*2] = bi/65536
+	#   	values_w[i*2+1] = bi - 65536*values_w[i*2]
+	   bi = convert_i(1.0)
+           values_w[0] = bi/65536
+           values_w[1] = bi - 65536*values_w[0]
+
 
 	   context[slave_id].setValues(register, address, values_w)
 	   
@@ -211,7 +217,8 @@ def updating_writer(a):
 #-------------------------------------------------------------#
 # if we have savi it to CSV and give command to send in Cloud
 #-------------------------------------------------------------#
-    for i in range(0, 20):
+#    for i in range(0, 20):
+    for i in range(0, 1):
 	check_val_change(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
 
     old_values = values
