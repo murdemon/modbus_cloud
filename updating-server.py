@@ -48,7 +48,14 @@ import time as _time
 csvfile = open('setSensorData.csv', 'ab')
 fieldnames = ["Operation","Flag","ObjectId","ObjectType","MobileRecordId","Functional Group Name","Organization Name","Organization Number","Value","Datetime","Grower","GrowerRecordId",\
                       "Ranch","RanchRecordId","Field","FieldRecordId","Row","Latitude","Longitude","Elevation","Sensor Name","SensorRecordId","SensorType","Sensor High Limit",\
-                      "Sensor Low Limit","Sensor Alert","Alert SMS Carrier","Alert SMS Message","Alert SMS PhoneNumber","Alert Email Address","Alert Email Message"]
+                      "Sensor Low Limit","Sensor Alert","Alert SMS Carrier","Alert SMS Message","Alert SMS PhoneNumber","Alert Email Address","Alert Email Message",\
+			"Alert Count","OrgLevel1Description","OrgLevel1Value","OrgLevel1RecordId","OrgLevel2Description",\
+			"OrgLevel2Value","OrgLevel2RecordId","OrgLevel3Description","OrgLevel3Value","OrgLevel3RecordId",\
+			"OrgLevel4Description","OrgLevel4Value","OrgLevel4RecordId","OrgLevel5Description","OrgLevel5Value",\
+			"OrgLevel5RecordId","SpatialLevel1Description","SpatialLevel1Value","SpatialLevel1RecordId","SpatialLevel2Description",\
+			"SpatialLevel2Value","SpatialLevel2RecordId","SpatialLevel3Description","SpatialLevel3Value","SpatialLevel3RecordId",\
+			"SpatialLevel4Description","SpatialLevel4Value","SpatialLevel4RecordId","SpatialLevel5Description",\
+			"SpatialLevel5Value","SpatialLevel5RecordId"]
 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 #writer.writeheader()
 
@@ -94,7 +101,38 @@ def save_csv(val, sensor_num):
                                  "Alert SMS Message": config.get('Sensor_'+str(sensor_num),'Alert SMS Message'),\
                                  "Alert SMS PhoneNumber": config.get('Sensor_'+str(sensor_num),'Alert SMS PhoneNumber'),\
                                  "Alert Email Address": config.get('Sensor_'+str(sensor_num),'Alert Email Address'),\
-                                 "Alert Email Message": config.get('Sensor_'+str(sensor_num),'Alert Email Message')\
+                                 "Alert Email Message": config.get('Sensor_'+str(sensor_num),'Alert Email Message'),\
+				 "Alert Count":  config.get('Sensor_'+str(sensor_num),'Alert Count'),\
+                                 "OrgLevel1Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel1Description'),\
+                                 "OrgLevel1RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel1RecordId'),\
+                                 "OrgLevel1Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel1Value'),\
+                                 "OrgLevel2Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel2Description'),\
+                                 "OrgLevel2RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel2RecordId'),\
+                                 "OrgLevel2Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel2Value'),\
+                                 "OrgLevel3Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel3Description'),\
+                                 "OrgLevel3RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel3RecordId'),\
+                                 "OrgLevel3Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel3Value'),\
+                                 "OrgLevel4Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel4Description'),\
+                                 "OrgLevel4RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel4RecordId'),\
+                                 "OrgLevel4Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel4Value'),\
+                                 "OrgLevel5Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel5Description'),\
+                                 "OrgLevel5RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel5RecordId'),\
+                                 "OrgLevel5Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel5Value'),\
+                                 "SpatialLevel1Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel1Description'),\
+                                 "SpatialLevel1RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel1RecordId'),\
+                                 "SpatialLevel1Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel1Value'),\
+                                 "SpatialLevel2Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel2Description'),\
+                                 "SpatialLevel2RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel2RecordId'),\
+                                 "SpatialLevel2Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel2Value'),\
+                                 "SpatialLevel3Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel3Description'),\
+                                 "SpatialLevel3RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel3RecordId'),\
+                                 "SpatialLevel3Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel3Value'),\
+                                 "SpatialLevel4Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel4Description'),\
+                                 "SpatialLevel4RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel4RecordId'),\
+                                 "SpatialLevel4Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel4Value'),\
+                                 "SpatialLevel5Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel5Description'),\
+                                 "SpatialLevel5RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel5RecordId'),\
+                                 "SpatialLevel5Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel5Value')\
 				})
 
 #-------------------------------------#
