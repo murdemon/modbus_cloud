@@ -13,7 +13,10 @@ import requests
 import ConfigParser
 import io
 import csv
+import grequests
+from requests_twisted import TwistedRequestsSession
 
+session = TwistedRequestsSession()
 
 #----------------------------------------#
 #making config parser
@@ -26,7 +29,7 @@ post_url = config.get('post_conf','post_url')
 # import the twisted libraries we need
 #---------------------------------------------------------------------------# 
 from twisted.internet.task import LoopingCall
-
+from twisted.internet import reactor
 #---------------------------------------------------------------------------# 
 # configure the service logging
 #---------------------------------------------------------------------------# 
@@ -160,12 +163,46 @@ def convert_i(i):
 #---------------------------------------------------------------------------# 
 old_values = [0]*8192
 new_data = 0
+data_was_updated = 0
+
+def handleFailure(f):
+         global csvfile
+         global writer
+         global new_data
+         global data_was_updated
+         
+	 log.info("Timeout POST Sensor 1 data to Cloud ")
+         csvfile = open('setSensorData.csv', 'ab')
+         new_data = 0
+         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+
+def print_status(r):
+#    print(response.url, response.status_code)
+ 		global csvfile
+    		global writer
+    		global new_data
+		global data_was_updated
+
+		log.info('Status: '+str(r.status_code))
+
+                if r.status_code == 200:
+                        csvfile = open('setSensorData.csv', 'wb')
+                        new_data = 0
+                        data_was_updated = 1
+                elif r.status_code == 404:
+                        csvfile = open('setSensorData.csv', 'ab')
+                        new_data = 0
+                else:
+                        csvfile = open('setSensorData.csv', 'ab')
+                        new_data = 0
+	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 def updating_cloud(a):
     global csvfile
     global writer
     global new_data
-    data_was_updated = 0
+    global session
+    global data_was_updated
 
     if new_data == 1:
         csvfile.close()
@@ -175,27 +212,29 @@ def updating_cloud(a):
         try:
                 multiple_files = [
                         ('text', ('setSensorData.csv', open('setSensorData.csv', 'rb'), 'text/plain'))]
-                r = requests.post(post_url, files=multiple_files, timeout=5)
-
+                r = session.post(post_url, files=multiple_files, timeout=2)
+		r.addCallback(print_status)
+		r.addErrback(handleFailure) 
                 log.info('Upload data to Cloud')
-                log.info('Status: '+str(r.status_code))
+#                log.info('Status: '+str(r.status_code))
 
-                if r.status_code == 200:
-                        csvfile = open('setSensorData.csv', 'wb')
-			new_data = 0
-			data_was_updated = 1
-                elif r.status_code == 404:
-                        csvfile = open('setSensorData.csv', 'ab')
-			new_data = 0
-		else: 
-		        csvfile = open('setSensorData.csv', 'ab') 
-			new_data = 0
+#                if r.status_code == 200:
+#                        csvfile = open('setSensorData.csv', 'wb')
+#			new_data = 0
+#			data_was_updated = 1
+#                elif r.status_code == 404:
+#                        csvfile = open('setSensorData.csv', 'ab')
+#			new_data = 0
+#		else: 
+#		        csvfile = open('setSensorData.csv', 'ab') 
+#			new_data = 0
 
-        except requests.exceptions.Timeout:
+#        except requests.exceptions.Timeout:
+        except requests.exceptions.ReadTimeout:
                 log.info("Timeout POST Sensor 1 data to Cloud")
                 csvfile = open('setSensorData.csv', 'ab')
 		new_data = 0
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+#        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 
     if data_was_updated == 1:
@@ -289,7 +328,7 @@ identity.MajorMinorRevision = '1.0'
 #---------------------------------------------------------------------------# 
 # run the server you want
 #---------------------------------------------------------------------------# 
-time = 3 # 5 seconds delay
+time = 5 # 5 seconds delay
 
 loop = LoopingCall(f=updating_writer, a=(context,))
 loop.start(time, now=False) # initially delay by time
@@ -297,4 +336,5 @@ loop.start(time, now=False) # initially delay by time
 loop_cloud = LoopingCall(f=updating_cloud, a=(context,))
 loop_cloud.start(time, now=False) # initially delay by time
 
+#reactor.run()
 StartTcpServer(context, identity=identity, address=("0.0.0.0", 502))
