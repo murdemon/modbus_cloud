@@ -34,11 +34,11 @@ from twisted.internet import reactor
 # configure the service logging
 #---------------------------------------------------------------------------# 
 import logging
-#logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.basicConfig()
 log = logging.getLogger()
 #log.setLevel(logging.DEBUG)
-log.setLevel(logging.INFO)
+#log.setLevel(logging.INFO)
 
 
 from ctypes import *
@@ -48,7 +48,7 @@ import time as _time
 #-----------------------------------------#
 #Intilize CSV file header
 #-----------------------------------------#
-csvfile = open('setSensorData.csv', 'ab')
+csvfile = open('/home/pi/setSensorData.csv', 'ab')
 fieldnames = ["Operation","Flag","ObjectId","ObjectType","MobileRecordId","Functional Group Name","Organization Name","Organization Number","Value","Datetime",\
 #"Grower","GrowerRecordId",\
 #                      "Ranch","RanchRecordId","Field","FieldRecordId","Row","Latitude","Longitude","Elevation",\
@@ -164,15 +164,18 @@ def convert_i(i):
 old_values = [0]*8192
 new_data = 0
 data_was_updated = 0
+sending_in_progress = 0
 
 def handleFailure(f):
          global csvfile
          global writer
          global new_data
          global data_was_updated
-         
-	 log.info("Timeout POST Sensor 1 data to Cloud ")
-         csvfile = open('setSensorData.csv', 'ab')
+         global sending_in_progress
+
+	 sending_in_progress = 0 
+	 log.info("Timeout POST Sensor data to Cloud ")
+         csvfile = open('/home/pi/setSensorData.csv', 'ab')
          new_data = 0
          writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
@@ -182,18 +185,20 @@ def print_status(r):
     		global writer
     		global new_data
 		global data_was_updated
+		global sending_in_progress
 
+		sending_in_progress = 0
 		log.info('Status: '+str(r.status_code))
 
                 if r.status_code == 200:
-                        csvfile = open('setSensorData.csv', 'wb')
+                        csvfile = open('/home/pi/setSensorData.csv', 'wb')
                         new_data = 0
                         data_was_updated = 1
                 elif r.status_code == 404:
-                        csvfile = open('setSensorData.csv', 'ab')
+                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data = 0
                 else:
-                        csvfile = open('setSensorData.csv', 'ab')
+                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data = 0
 	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
@@ -203,16 +208,18 @@ def updating_cloud(a):
     global new_data
     global session
     global data_was_updated
+    global sending_in_progress
 
-    if new_data == 1:
+    if new_data == 1 and sending_in_progress == 0:
         csvfile.close()
+	sending_in_progress = 1
 	#-----------------------------------------------#
 	# if have ne data make API setSensorData
 	#-----------------------------------------------#
         try:
                 multiple_files = [
-                        ('text', ('setSensorData.csv', open('setSensorData.csv', 'rb'), 'text/plain'))]
-                r = session.post(post_url, files=multiple_files, timeout=2)
+                        ('text', ('/home/pi/setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
+                r = session.post(post_url, files=multiple_files, timeout=5)
 		r.addCallback(print_status)
 		r.addErrback(handleFailure) 
                 log.info('Upload data to Cloud')
@@ -232,7 +239,7 @@ def updating_cloud(a):
 #        except requests.exceptions.Timeout:
         except requests.exceptions.ReadTimeout:
                 log.info("Timeout POST Sensor 1 data to Cloud")
-                csvfile = open('setSensorData.csv', 'ab')
+                csvfile = open('/home/pi/setSensorData.csv', 'ab')
 		new_data = 0
 #        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
@@ -259,10 +266,10 @@ def updating_cloud(a):
            values_w[0] = bi/65536
            values_w[1] = bi - 65536*values_w[0]
 
-
+           log.info("Set 1 reg to one")
 	   context[slave_id].setValues(register, address, values_w)
 	   
-	   data_was_updating = 0
+	   data_was_updated = 0
 
 	
 #---------------------------------------------------------------------#
@@ -293,15 +300,15 @@ def updating_writer(a):
     slave_id = 0x00
     address  = 0x0
     values   = context[slave_id].getValues(register, address, count=40)
-
+    if new_data == 0:
 #-------------------------------------------------------------#
 # if we have savi it to CSV and give command to send in Cloud
 #-------------------------------------------------------------#
 #    for i in range(0, 20):
-    for i in [0, 1, 2, 3, 4, 12, 13, 18]:
+     for i in [0, 1, 2, 3, 4, 12, 13, 18]:
 	check_val_change(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
 
-    old_values = values
+     old_values = values
 
 #---------------------------------------------------------------------------# 
 # initialize your data store
@@ -328,7 +335,8 @@ identity.MajorMinorRevision = '1.0'
 #---------------------------------------------------------------------------# 
 # run the server you want
 #---------------------------------------------------------------------------# 
-time = 5 # 5 seconds delay
+time = 10 # 5 seconds delay
+#time_cloud = 10
 
 loop = LoopingCall(f=updating_writer, a=(context,))
 loop.start(time, now=False) # initially delay by time
