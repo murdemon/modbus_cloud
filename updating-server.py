@@ -34,11 +34,11 @@ from twisted.internet import reactor
 # configure the service logging
 #---------------------------------------------------------------------------# 
 import logging
-logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+#logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.basicConfig()
 log = logging.getLogger()
 #log.setLevel(logging.DEBUG)
-#log.setLevel(logging.INFO)
+log.setLevel(logging.INFO)
 
 
 from ctypes import *
@@ -175,6 +175,7 @@ def handleFailure(f):
 
 	 sending_in_progress = 0 
 	 log.info("Timeout POST Sensor data to Cloud ")
+#+str(f.getTraceback()))
          csvfile = open('/home/pi/setSensorData.csv', 'ab')
          new_data = 0
          writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
@@ -189,6 +190,7 @@ def print_status(r):
 
 		sending_in_progress = 0
 		log.info('Status: '+str(r.status_code))
+#+' Text: '+str(r.text))
 
                 if r.status_code == 200:
                         csvfile = open('/home/pi/setSensorData.csv', 'wb')
@@ -218,8 +220,8 @@ def updating_cloud(a):
 	#-----------------------------------------------#
         try:
                 multiple_files = [
-                        ('text', ('/home/pi/setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
-                r = session.post(post_url, files=multiple_files, timeout=5)
+                        ('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
+                r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
 		r.addCallback(print_status)
 		r.addErrback(handleFailure) 
                 log.info('Upload data to Cloud')
@@ -285,6 +287,7 @@ def check_val_change(old_1, new_1, old_2, new_2,sensor_num):
 	        save_csv(newval,sensor_num)
 	        new_data = 1
 
+one_send_only = 0
 
 #-----------------------------------------#
 #Check if we have new data on Modbus
@@ -295,19 +298,22 @@ def updating_writer(a):
     global csvfile
     global writer
     global new_data
+    global one_send_only
+
     context  = a[0]
     register = 3
     slave_id = 0x00
     address  = 0x0
     values   = context[slave_id].getValues(register, address, count=40)
-    if new_data == 0:
+    if new_data == 0 and one_send_only == 0:
 #-------------------------------------------------------------#
 # if we have savi it to CSV and give command to send in Cloud
 #-------------------------------------------------------------#
 #    for i in range(0, 20):
      for i in [0, 1, 2, 3, 4, 12, 13, 18]:
 	check_val_change(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
-
+     if new_data == 1:
+        one_send_only = 1
      old_values = values
 
 #---------------------------------------------------------------------------# 
