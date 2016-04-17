@@ -34,11 +34,11 @@ from twisted.internet import reactor
 # configure the service logging
 #---------------------------------------------------------------------------# 
 import logging
-#logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.basicConfig()
 log = logging.getLogger()
 #log.setLevel(logging.DEBUG)
-log.setLevel(logging.INFO)
+#log.setLevel(logging.INFO)
 
 
 from ctypes import *

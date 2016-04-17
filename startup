@@ -1,0 +1,78 @@
+#!/bin/sh -e
+#sleep 30
+
+echo "Start up PI ==================================" >> /var/log/startup.log
+
+qmicli -d /dev/cdc-wdm0 --wda-set-data-format=802-3   &
+sleep 5
+qmicli -d /dev/cdc-wdm0 --dms-set-operating-mode=online  &
+sleep 5
+qmicli -d /dev/cdc-wdm0 --wds-start-network=internet --client-no-release-cid &
+sleep 5
+qmi-network /dev/cdc-wdm0 start &
+
+i=0
+
+while true 
+do
+	status=$(uqmi -d /dev/cdc-wdm0  --get-data-status)
+        echo "$status" >> /var/log/startup.log
+	echo "loop 1"
+	if [ "$status" = '"connected"' ]
+		then
+			echo "3g connected" >> /var/log/startup.log
+			break
+		fi
+        if [ $i = 90 ]
+		then
+                	echo "not connected signal to 3g" >> /var/log/startup.log
+                	break
+        	fi
+	sleep 1
+	i=$(( i+1 ))
+done
+
+sleep 5
+sudo killall dhcpcd &
+sleep 5
+sudo dhcpcd -4d wwan0 &
+sleep 10
+
+i=0
+ping=0
+while true
+do
+	echo "Loop 2"
+	if  ping -c 1 8.8.8.8
+	then
+		echo "ping ok"
+		echo "ping 8.8.8.8 ok" >> /var/log/startup.log
+		ping=1
+#		break
+	else
+		echo "ping not ok"
+		sudo killall dhcpcd &
+	        sleep 5
+	       	sudo dhcpcd -4d wwan0 &
+       		sleep 5
+	fi
+	echo "$i"
+	if [ $i = 4 ]
+	then
+		echo "not connected internet to 3g" >> /var/log/startup.log
+#		echo "Reboot PI" >> /var/log/startup.log
+		if [ $ping = 0 ]
+		then
+	                echo "Reboot PI" >> /var/log/startup.log
+			sudo reboot
+		fi
+		break
+	fi
+
+	i=$(( i+1 ))
+done
+
+echo "start modbus server" >> /var/log/startup.log
+#/usr/bin/remot_ssh &
+sudo /home/pi/updating-server.py &
+
