@@ -15,6 +15,7 @@ import io
 import csv
 import grequests
 import sys
+import twisted
 from requests_twisted import TwistedRequestsSession
 
 session = TwistedRequestsSession()
@@ -72,9 +73,14 @@ UpdateTime = 0
 if len(sys.argv) > 1:
 	if (sys.argv[1:])[0] == "Time_from_PLC":
 		log.info("Get time from PLC")
-		TimeFromPLC = 1
+		UpdateTime = 0
 	else:
+		log.info("Get time from NTP")
 		UpdateTime = 1
+else:
+	log.info("Get time from NTP")
+	UpdateTime = 1
+
 
 from ctypes import *
 from datetime import datetime
@@ -204,7 +210,7 @@ sending_in_progress = 0
 def handleFailure(f):
          global csvfile
          global writer
-         global new_data
+         global OBnew_data
          global data_was_updated
          global sending_in_progress
 
@@ -247,19 +253,22 @@ def updating_cloud(a):
     global data_was_updated
     global sending_in_progress
 
+    log.info("new data: "+str(new_data))
+    log.info("sending_in_progress: "+str(sending_in_progress))
     if new_data == 1 and sending_in_progress == 0:
         csvfile.close()
 	sending_in_progress = 1
 	#-----------------------------------------------#
 	# if have ne data make API setSensorData
 	#-----------------------------------------------#
-        try:
-                multiple_files = [
+        log.info('Upload data to Cloud')
+#        try:
+        multiple_files = [
                         ('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
-                r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
-		r.addCallback(print_status)
-		r.addErrback(handleFailure) 
-                log.info('Upload data to Cloud')
+        r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
+	r.addCallback(print_status)
+	r.addErrback(handleFailure) 
+        
 #                log.info('Status: '+str(r.status_code))
 
 #                if r.status_code == 200:
@@ -274,10 +283,10 @@ def updating_cloud(a):
 #			new_data = 0
 
 #        except requests.exceptions.Timeout:
-        except requests.exceptions.ReadTimeout:
-                log.info("Timeout POST Sensor 1 data to Cloud")
-                csvfile = open('/home/pi/setSensorData.csv', 'ab')
-		new_data = 0
+#        except requests.exceptions.ReadTimeout:
+#                log.info("Timeout POST Sensor 1 data to Cloud")
+#                csvfile = open('/home/pi/setSensorData.csv', 'ab')
+#		new_data = 0
 #        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 
@@ -340,6 +349,8 @@ def check_val_change_RTC(old_1, new_1, old_2, new_2,sensor_num):
 	global Min
 	global Sec
 	global UpdateTime
+	global loop_cloud
+	global time_cloud
 
         if old_1 <> new_1 or old_2 <> new_2:
                 b = new_1*65536+new_2
@@ -362,6 +373,8 @@ def check_val_change_RTC(old_1, new_1, old_2, new_2,sensor_num):
 		UpdateTime = 1
 		new_datetime = (int(Year), int(Month), int(Day), int(Hour), int(Min), int(Sec),int(0))
 		linux_set_time(new_datetime)
+		loop_cloud.stop()
+		loop_cloud.start(time_cloud, now=False)
 #                save_csv(newval,sensor_num)
 #                new_data = 1
 
@@ -378,17 +391,17 @@ def updating_writer(a):
     global writer
     global new_data
     global one_send_only
+    global UpdateTime
+
+    log.info("Update Time is:" + str(UpdateTime))
 
     context  = a[0]
     register = 3
     slave_id = 0x00
     address  = 0x0
     values   = context[slave_id].getValues(register, address, count=100)
+
     if new_data == 0 and one_send_only == 0 and UpdateTime == 1:
-#-------------------------------------------------------------#
-# if we have savi it to CSV and give command to send in Cloud
-#-------------------------------------------------------------#
-#    for i in range(0, 20):
      for i in [0, 1, 2, 3, 4, 12, 13, 18]:
 	check_val_change(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
      if new_data == 1:
@@ -396,7 +409,6 @@ def updating_writer(a):
      old_values = values
 
     if UpdateTime == 0:
-
      for i in [40, 41, 42, 43, 44, 45]:
         check_val_change_RTC(65535,values[i*2],65535,values[i*2+1],i+1)
  
@@ -425,14 +437,14 @@ identity.MajorMinorRevision = '1.0'
 #---------------------------------------------------------------------------# 
 # run the server you want
 #---------------------------------------------------------------------------# 
-time = 10 # 5 seconds delay
-#time_cloud = 10
+time = 5
+time_cloud = 5
 
 loop = LoopingCall(f=updating_writer, a=(context,))
-loop.start(time, now=False) # initially delay by time
+loop.start(time, now=True).addErrback(twisted.python.log.err) # initially delay by time
 
 loop_cloud = LoopingCall(f=updating_cloud, a=(context,))
-loop_cloud.start(time, now=False) # initially delay by time
+loop_cloud.start(time_cloud, now=True).addErrback(twisted.python.log.err) # initially delay by time
 
 #reactor.run()
 StartTcpServer(context, identity=identity, address=("0.0.0.0", 502))
