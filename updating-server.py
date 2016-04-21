@@ -40,7 +40,6 @@ import logging
 #logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.basicConfig()
 log = logging.getLogger()
-#log.setLevel(logging.DEBUG)
 log.setLevel(logging.INFO)
 
 
@@ -69,7 +68,6 @@ def linux_set_time(time_tuple):
 TimeFromPLC = 0
 UpdateTime = 0
 
-#log.info('Argument List:' + str(sys.argv[1:]))
 if len(sys.argv) > 1:
 	if (sys.argv[1:])[0] == "Time_from_PLC":
 		log.info("Get time from PLC")
@@ -91,20 +89,8 @@ import time as _time
 #-----------------------------------------#
 csvfile = open('/home/pi/setSensorData.csv', 'ab')
 fieldnames = ["Operation","Flag","ObjectId","ObjectType","MobileRecordId","Functional Group Name","Organization Name","Organization Number","Value","Datetime",\
-#"Grower","GrowerRecordId",\
-#                      "Ranch","RanchRecordId","Field","FieldRecordId","Row","Latitude","Longitude","Elevation",\
 "Sensor Name","SensorRecordId"]
-#"SensorType","Sensor High Limit",\
-#                      "Sensor Low Limit","Sensor Alert","Alert SMS Carrier","Alert SMS Message","Alert SMS PhoneNumber","Alert Email Address","Alert Email Message",\
-#			"Alert Count","OrgLevel1Description","OrgLevel1Value","OrgLevel1RecordId","OrgLevel2Description",\
-#			"OrgLevel2Value","OrgLevel2RecordId","OrgLevel3Description","OrgLevel3Value","OrgLevel3RecordId",\
-#			"OrgLevel4Description","OrgLevel4Value","OrgLevel4RecordId","OrgLevel5Description","OrgLevel5Value",\
-#			"OrgLevel5RecordId","SpatialLevel1Description","SpatialLevel1Value","SpatialLevel1RecordId","SpatialLevel2Description",\
-#			"SpatialLevel2Value","SpatialLevel2RecordId","SpatialLevel3Description","SpatialLevel3Value","SpatialLevel3RecordId",\
-#			"SpatialLevel4Description","SpatialLevel4Value","SpatialLevel4RecordId","SpatialLevel5Description",\
-#			"SpatialLevel5Value","SpatialLevel5RecordId"]
 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-#writer.writeheader()
 
 #------------------------------------------#
 #Save data to CSV file
@@ -126,60 +112,8 @@ def save_csv(val, sensor_num):
                                  "Organization Number": config.get('Sensor_'+str(sensor_num),'Organization Number'),\
                                  "Value": 0 if val == -9999 else str('%.2f' % val),\
                                  "Datetime": datetime_now,\
-#                                 "Grower": config.get('Sensor_'+str(sensor_num),'Grower'),\
-#                                 "GrowerRecordId": config.get('Sensor_'+str(sensor_num),'GrowerRecordId'),\
-#                                 "Ranch": config.get('Sensor_'+str(sensor_num),'Ranch'),\
-#                                 "RanchRecordId": config.get('Sensor_'+str(sensor_num),'RanchRecordId'),\
-#                                 "Field": config.get('Sensor_'+str(sensor_num),'Field'),\
-#                                 "FieldRecordId": config.get('Sensor_'+str(sensor_num),'FieldRecordId'),\
-#                                 "Row": config.get('Sensor_'+str(sensor_num),'Row'),\
-#                                 "Latitude": config.get('Sensor_'+str(sensor_num),'Latitude'),\
-#                                 "Longitude": config.get('Sensor_'+str(sensor_num),'Longitude'),\
-#                                 "Elevation": config.get('Sensor_'+str(sensor_num),'Elevation'),\
                                  "Sensor Name": config.get('Sensor_'+str(sensor_num),'Sensor Name'),\
                                  "SensorRecordId": config.get('Sensor_'+str(sensor_num),'SensorRecordId'),\
-#                                 "SensorType": config.get('Sensor_'+str(sensor_num),'SensorType'),\
-#                                 "Sensor High Limit": config.get('Sensor_'+str(sensor_num),'Sensor High Limit'),\
-#                                 "Sensor Low Limit": config.get('Sensor_'+str(sensor_num),'Sensor Low Limit'),\
-#                                 "Sensor Alert": str('yes' if OutLim == True or val == -9999 else 'no'),\
-		                                #"Sensor Alert": str('yes' if val == -9999 else 'no'),\
-						# config.get('Sensor_'+str(sensor_num),'Sensor Alert'),\
-#				 "Alert SMS Carrier": config.get('Sensor_'+str(sensor_num),'Alert SMS Carrier'),\
-#                                 "Alert SMS Message": config.get('Sensor_'+str(sensor_num),'Alert SMS Message'),\
-#                                 "Alert SMS PhoneNumber": config.get('Sensor_'+str(sensor_num),'Alert SMS PhoneNumber'),\
-#                                 "Alert Email Address": config.get('Sensor_'+str(sensor_num),'Alert Email Address'),\
-#                                 "Alert Email Message": config.get('Sensor_'+str(sensor_num),'Alert Email Message'),\
-#				 "Alert Count":  config.get('Sensor_'+str(sensor_num),'Alert Count'),\
-#                                 "OrgLevel1Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel1Description'),\
-#                                 "OrgLevel1RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel1RecordId'),\
-#                                 "OrgLevel1Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel1Value'),\
-#                                 "OrgLevel2Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel2Description'),\
-#                                 "OrgLevel2RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel2RecordId'),\
-#                                 "OrgLevel2Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel2Value'),\
-#                                 "OrgLevel3Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel3Description'),\
-#                                 "OrgLevel3RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel3RecordId'),\
-#                                 "OrgLevel3Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel3Value'),\
-#                                 "OrgLevel4Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel4Description'),\
-#                                 "OrgLevel4RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel4RecordId'),\
-#                                 "OrgLevel4Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel4Value'),\
-#                                 "OrgLevel5Description":  config.get('Sensor_'+str(sensor_num),'OrgLevel5Description'),\
-#                                 "OrgLevel5RecordId":  config.get('Sensor_'+str(sensor_num),'OrgLevel5RecordId'),\
-#                                 "OrgLevel5Value":  config.get('Sensor_'+str(sensor_num),'OrgLevel5Value'),\
-#                                 "SpatialLevel1Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel1Description'),\
-#                                 "SpatialLevel1RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel1RecordId'),\
-#                                 "SpatialLevel1Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel1Value'),\
-#                                 "SpatialLevel2Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel2Description'),\
-#                                 "SpatialLevel2RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel2RecordId'),\
-#                                 "SpatialLevel2Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel2Value'),\
-#                                 "SpatialLevel3Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel3Description'),\
-#                                 "SpatialLevel3RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel3RecordId'),\
-#                                 "SpatialLevel3Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel3Value'),\
-#                                 "SpatialLevel4Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel4Description'),\
-#                                 "SpatialLevel4RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel4RecordId'),\
-#                                 "SpatialLevel4Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel4Value'),\
-#                                 "SpatialLevel5Description":  config.get('Sensor_'+str(sensor_num),'SpatialLevel5Description'),\
-#                                 "SpatialLevel5RecordId":  config.get('Sensor_'+str(sensor_num),'SpatialLevel5RecordId'),\
-#                                 "SpatialLevel5Value":  config.get('Sensor_'+str(sensor_num),'SpatialLevel5Value')\
 				})
 
 #-------------------------------------#
@@ -210,19 +144,18 @@ sending_in_progress = 0
 def handleFailure(f):
          global csvfile
          global writer
-         global OBnew_data
+         global new_data
          global data_was_updated
          global sending_in_progress
 
 	 sending_in_progress = 0 
 	 log.info("Timeout POST Sensor data to Cloud ")
-#+str(f.getTraceback()))
          csvfile = open('/home/pi/setSensorData.csv', 'ab')
-         new_data = 0
+         data_was_updated = 1 
+	 new_data = 0
          writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 def print_status(r):
-#    print(response.url, response.status_code)
  		global csvfile
     		global writer
     		global new_data
@@ -231,7 +164,6 @@ def print_status(r):
 
 		sending_in_progress = 0
 		log.info('Status: '+str(r.status_code))
-#+' Text: '+str(r.text))
 
                 if r.status_code == 200:
                         csvfile = open('/home/pi/setSensorData.csv', 'wb')
@@ -240,9 +172,11 @@ def print_status(r):
                 elif r.status_code == 404:
                         csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data = 0
-                else:
+                	data_was_updated = 1
+		else:
                         csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data = 0
+			data_was_updated = 1
 	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 def updating_cloud(a):
@@ -262,35 +196,12 @@ def updating_cloud(a):
 	# if have ne data make API setSensorData
 	#-----------------------------------------------#
         log.info('Upload data to Cloud')
-#        try:
-        multiple_files = [
-                        ('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
+        multiple_files = [('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
         r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
 	r.addCallback(print_status)
 	r.addErrback(handleFailure) 
-        
-#                log.info('Status: '+str(r.status_code))
 
-#                if r.status_code == 200:
-#                        csvfile = open('setSensorData.csv', 'wb')
-#			new_data = 0
-#			data_was_updated = 1
-#                elif r.status_code == 404:
-#                        csvfile = open('setSensorData.csv', 'ab')
-#			new_data = 0
-#		else: 
-#		        csvfile = open('setSensorData.csv', 'ab') 
-#			new_data = 0
-
-#        except requests.exceptions.Timeout:
-#        except requests.exceptions.ReadTimeout:
-#                log.info("Timeout POST Sensor 1 data to Cloud")
-#                csvfile = open('/home/pi/setSensorData.csv', 'ab')
-#		new_data = 0
-#        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-
-
-    if data_was_updated == 1:
+    if data_was_updated == 1:   
 	#----------------------------------------------------------------#
 	# Ask command for devices (first getState then if ok resetState)
 	#----------------------------------------------------------------#
@@ -300,14 +211,6 @@ def updating_cloud(a):
     	   address  = 0x1000
     	   values_w   = context[slave_id].getValues(register, address, count=40)
 
-	#   for i in range(0, 20):
-
-	#   	b = values_w[i*2]*65536+values_w[i*2+1]
-	#   	newval = convert(b)
-	#   	newval = newval + 1
-	#   	bi = convert_i(newval)
-	#   	values_w[i*2] = bi/65536
-	#   	values_w[i*2+1] = bi - 65536*values_w[i*2]
 	   bi = convert_i(1.0)
            values_w[0] = bi/65536
            values_w[1] = bi - 65536*values_w[0]
@@ -351,6 +254,8 @@ def check_val_change_RTC(old_1, new_1, old_2, new_2,sensor_num):
 	global UpdateTime
 	global loop_cloud
 	global time_cloud
+	global loop
+	global time
 
         if old_1 <> new_1 or old_2 <> new_2:
                 b = new_1*65536+new_2
@@ -373,11 +278,6 @@ def check_val_change_RTC(old_1, new_1, old_2, new_2,sensor_num):
 		UpdateTime = 1
 		new_datetime = (int(Year), int(Month), int(Day), int(Hour), int(Min), int(Sec),int(0))
 		linux_set_time(new_datetime)
-		loop_cloud.stop()
-		loop_cloud.start(time_cloud, now=False)
-#                save_csv(newval,sensor_num)
-#                new_data = 1
-
 
 one_send_only = 0
 
@@ -434,17 +334,20 @@ identity.ModelName   = 'pymodbus Server'
 identity.MajorMinorRevision = '1.0'
 
 
+def fail(f):
+    log.info("we got an exception: %s" % (f.getTraceback(),))
+
 #---------------------------------------------------------------------------# 
 # run the server you want
 #---------------------------------------------------------------------------# 
-time = 5
-time_cloud = 5
+time = 10
+time_cloud = 10
 
 loop = LoopingCall(f=updating_writer, a=(context,))
-loop.start(time, now=True).addErrback(twisted.python.log.err) # initially delay by time
+loop.start(time, now=False).addErrback(fail) # initially delay by time
 
 loop_cloud = LoopingCall(f=updating_cloud, a=(context,))
-loop_cloud.start(time_cloud, now=True).addErrback(twisted.python.log.err) # initially delay by time
+loop_cloud.start(time_cloud, now=False).addErrback(fail) # initially delay by time
 
-#reactor.run()
 StartTcpServer(context, identity=identity, address=("0.0.0.0", 502))
+
