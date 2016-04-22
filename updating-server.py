@@ -92,14 +92,19 @@ fieldnames = ["Operation","Flag","ObjectId","ObjectType","MobileRecordId","Funct
 "Sensor Name","SensorRecordId"]
 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
+dt_now_PLC =  datetime.now()
+
 #------------------------------------------#
 #Save data to CSV file
 #------------------------------------------#
 def save_csv(val, sensor_num):
-		now = datetime.now()
-		dt = datetime.now()
+		global dt_now_PLC
+#		now = datetime.now()
+#		dt = datetime.now()
+		now = dt_now_PLC
+		dt = dt_now_PLC
 		timestamp = _time.mktime(dt.timetuple())
-		datetime_now = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+		datetime_now = datetime.strftime(dt, "%Y-%m-%d %H:%M:%S")
 		OutLim = val >  float(config.get('Sensor_'+str(sensor_num),'Sensor High Limit')) or val < float(config.get('Sensor_'+str(sensor_num),'Sensor Low Limit'))
 		log.info("write to CSV for "+str(sensor_num)+" Value:"+str(val))                                    
 		writer.writerow({"Operation": config.get('Sensor_'+str(sensor_num),'Operation'),\
@@ -150,10 +155,10 @@ def handleFailure(f):
 
 	 sending_in_progress = 0 
 	 log.info("Timeout POST Sensor data to Cloud ")
-         csvfile = open('/home/pi/setSensorData.csv', 'ab')
+#         csvfile = open('/home/pi/setSensorData.csv', 'ab')
          data_was_updated = 1 
 	 new_data = 0
-         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+#         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 def print_status(r):
  		global csvfile
@@ -169,16 +174,17 @@ def print_status(r):
                         csvfile = open('/home/pi/setSensorData.csv', 'wb')
                         new_data = 0
                         data_was_updated = 1
+	                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
                 elif r.status_code == 404:
-                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
+#                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data = 0
                 	data_was_updated = 1
 		else:
-                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
+#                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data = 0
 			data_was_updated = 1
-	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-
+#	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+delay = 0
 def updating_cloud(a):
     global csvfile
     global writer
@@ -186,6 +192,7 @@ def updating_cloud(a):
     global session
     global data_was_updated
     global sending_in_progress
+    global delay
 
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
@@ -205,6 +212,9 @@ def updating_cloud(a):
 	#----------------------------------------------------------------#
 	# Ask command for devices (first getState then if ok resetState)
 	#----------------------------------------------------------------#
+	delay = delay + 1
+	if delay > 5:
+	   csvfile.close()
 	   context  = a[0]
 	   register = 3
     	   slave_id = 0x00
@@ -256,6 +266,7 @@ def check_val_change_RTC(old_1, new_1, old_2, new_2,sensor_num):
 	global time_cloud
 	global loop
 	global time
+	global dt_now_PLC
 
         if old_1 <> new_1 or old_2 <> new_2:
                 b = new_1*65536+new_2
@@ -274,10 +285,10 @@ def check_val_change_RTC(old_1, new_1, old_2, new_2,sensor_num):
                 if sensor_num == 46:
                         Sec = newval
 	if Year > 0 and Month > 0 and Day > 0 and Hour > -1 and Min > -1 and Sec > -1:
-		log.info("Set new RTC")
 		UpdateTime = 1
 		new_datetime = (int(Year), int(Month), int(Day), int(Hour), int(Min), int(Sec),int(0))
-		linux_set_time(new_datetime)
+		dt_now_PLC = datetime( *new_datetime[:6])
+		log.info("Set time " + datetime.strftime(dt_now_PLC, "%Y-%m-%d %H:%M:%S"))
 
 one_send_only = 0
 
@@ -302,6 +313,11 @@ def updating_writer(a):
     values   = context[slave_id].getValues(register, address, count=100)
 
     if new_data == 0 and one_send_only == 0 and UpdateTime == 1:
+#--------------------------------#
+#Test 1
+#--------------------------------#
+     for i in [40, 41, 42, 43, 44, 45]:
+        check_val_change_RTC(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
      for i in [0, 1, 2, 3, 4, 12, 13, 18]:
 	check_val_change(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
      if new_data == 1:
