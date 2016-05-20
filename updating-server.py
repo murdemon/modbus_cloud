@@ -14,6 +14,7 @@ import ConfigParser
 import io
 import csv
 import grequests
+import sys
 from requests_twisted import TwistedRequestsSession
 
 session = TwistedRequestsSession()
@@ -25,6 +26,7 @@ config = ConfigParser.RawConfigParser()
 config.read('/etc/updating-server.conf')
 post_url = config.get('post_conf','post_url')
 
+
 #---------------------------------------------------------------------------# 
 # import the twisted libraries we need
 #---------------------------------------------------------------------------# 
@@ -34,12 +36,45 @@ from twisted.internet import reactor
 # configure the service logging
 #---------------------------------------------------------------------------# 
 import logging
-logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+#logging.basicConfig(filename='/var/log/modbussrv.log',level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.basicConfig()
 log = logging.getLogger()
 #log.setLevel(logging.DEBUG)
-#log.setLevel(logging.INFO)
+log.setLevel(logging.INFO)
 
+
+#---------------------------------------------------------------------------#
+#  Get time from PLC registers
+#---------------------------------------------------------------------------#
+def linux_set_time(time_tuple):
+    import ctypes
+    import ctypes.util
+    import time
+
+    CLOCK_REALTIME = 0
+
+    class timespec(ctypes.Structure):
+        _fields_ = [("tv_sec", ctypes.c_long),
+                    ("tv_nsec", ctypes.c_long)]
+
+    librt = ctypes.CDLL(ctypes.util.find_library("rt"))
+
+    ts = timespec()
+    ts.tv_sec = int( time.mktime( datetime( *time_tuple[:6]).timetuple())  )
+    ts.tv_nsec = time_tuple[6] * 1000000 # Millisecond to nanosecond
+
+    librt.clock_settime(CLOCK_REALTIME, ctypes.byref(ts))
+
+TimeFromPLC = 0
+UpdateTime = 0
+
+#log.info('Argument List:' + str(sys.argv[1:]))
+if len(sys.argv) > 1:
+	if (sys.argv[1:])[0] == "Time_from_PLC":
+		log.info("Get time from PLC")
+		TimeFromPLC = 1
+	else:
+		UpdateTime = 1
 
 from ctypes import *
 from datetime import datetime
@@ -161,7 +196,7 @@ def convert_i(i):
 #---------------------------------------------------------------------------# 
 # define your callback process
 #---------------------------------------------------------------------------# 
-old_values = [0]*8192
+old_values = [65535]*8192
 new_data = 0
 data_was_updated = 0
 sending_in_progress = 0
@@ -287,6 +322,50 @@ def check_val_change(old_1, new_1, old_2, new_2,sensor_num):
 	        save_csv(newval,sensor_num)
 	        new_data = 1
 
+#---------------------------------------------------------------------#
+#Check that dat changed and set Date and Time from PLC
+#---------------------------------------------------------------------#
+Year = 0
+Month = 0
+Day = 0
+Hour = -1
+Min = -1
+Sec = -1
+def check_val_change_RTC(old_1, new_1, old_2, new_2,sensor_num):
+        global new_data
+	global Year
+	global Month
+	global Day
+	global Hour
+	global Min
+	global Sec
+	global UpdateTime
+
+        if old_1 <> new_1 or old_2 <> new_2:
+                b = new_1*65536+new_2
+                newval = convert(b)
+                log.info("We get new Date Time "+str(sensor_num)+" data: " + str('%.0f' % newval))
+		if sensor_num == 41:
+			Year = newval
+                if sensor_num == 42:
+                        Month = newval
+                if sensor_num == 43:
+                        Day = newval
+                if sensor_num == 44:
+                        Hour = newval
+                if sensor_num == 45:
+                        Min = newval
+                if sensor_num == 46:
+                        Sec = newval
+	if Year > 0 and Month > 0 and Day > 0 and Hour > -1 and Min > -1 and Sec > -1:
+		log.info("Set new RTC")
+		UpdateTime = 1
+		new_datetime = (int(Year), int(Month), int(Day), int(Hour), int(Min), int(Sec),int(0))
+		linux_set_time(new_datetime)
+#                save_csv(newval,sensor_num)
+#                new_data = 1
+
+
 one_send_only = 0
 
 #-----------------------------------------#
@@ -304,8 +383,8 @@ def updating_writer(a):
     register = 3
     slave_id = 0x00
     address  = 0x0
-    values   = context[slave_id].getValues(register, address, count=40)
-    if new_data == 0 and one_send_only == 0:
+    values   = context[slave_id].getValues(register, address, count=100)
+    if new_data == 0 and one_send_only == 0 and UpdateTime == 1:
 #-------------------------------------------------------------#
 # if we have savi it to CSV and give command to send in Cloud
 #-------------------------------------------------------------#
@@ -316,14 +395,19 @@ def updating_writer(a):
         one_send_only = 1
      old_values = values
 
+    if UpdateTime == 0:
+
+     for i in [40, 41, 42, 43, 44, 45]:
+        check_val_change_RTC(65535,values[i*2],65535,values[i*2+1],i+1)
+ 
 #---------------------------------------------------------------------------# 
 # initialize your data store
 #---------------------------------------------------------------------------# 
 store = ModbusSlaveContext(
-    di = ModbusSequentialDataBlock(0, [0]*8192),
-    co = ModbusSequentialDataBlock(0, [0]*8192),
-    hr = ModbusSequentialDataBlock(0, [0]*8192),
-    ir = ModbusSequentialDataBlock(0, [0]*8192))
+    di = ModbusSequentialDataBlock(0, [65535]*8192),
+    co = ModbusSequentialDataBlock(0, [65535]*8192),
+    hr = ModbusSequentialDataBlock(0, [65535]*8192),
+    ir = ModbusSequentialDataBlock(0, [65535]*8192))
 context = ModbusServerContext(slaves=store, single=True)
 
 #---------------------------------------------------------------------------# 
