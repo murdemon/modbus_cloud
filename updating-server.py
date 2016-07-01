@@ -16,13 +16,54 @@ import csv
 import grequests
 import sys
 import twisted
+#import datetime
 from ftplib import FTP
 from requests_twisted import TwistedRequestsSession
 import json
 
 
-#data = json.loads('[{"LobjectId":2,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"DurationInMinutes":"10","Days":"Tue,Thu","Start Time":"8:00"}}]')
+#data = json.loads('[{"LobjectId":2,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"DurationInMinutes":"60","Days":"Mon,Tue","Start Time":"8:30"}}]')
+#DurationInMinutes = data[0]['mapCodingInfo']['DurationInMinutes']
+#Days = data[0]['mapCodingInfo']['Days']
+#StartTime = data[0]['mapCodingInfo']['Start Time']
+#values_w = [0]*20
+
+#print(Days)
+#values_w[2] = 0
+#if str(Days).find('Mon') > -1:
+#                values_w[2] = values_w[2] + 1
+#if str(Days).find('Tue') > -1:
+#                values_w[2] = values_w[2] + 2
+#if str(Days).find('Wed') > -1:
+#                values_w[2] = values_w[2] + 4
+#if str(Days).find('Thu') > -1:
+#                values_w[2] = values_w[2] + 8
+#if str(Days).find('Fri') > -1:
+#                values_w[2] = values_w[2] + 16
+#if str(Days).find('Sat') > -1:
+#                values_w[2] = values_w[2] + 32
+#if str(Days).find('Sun') > -1:
+#                values_w[2] = values_w[2] + 64
+
+#sttime=datetime.datetime.strptime(StartTime,'%H:%M')
+#drtime=datetime.datetime.strptime('0:0','%H:%M') + datetime.timedelta(minutes = int(DurationInMinutes))
+
+#print("Hour " + str(sttime.hour))
+#print("Min " + str(sttime.minute))
+
+#values_w[2] = int(sttime.hour)*256 + values_w[2];
+#values_w[3] = int(drtime.hour)*256+int(sttime.minute);
+#values_w[4] = int(drtime.second)*256+int(drtime.minute);
+
+#print("Reg 1 " + str(values_w[2]))
+#print("Reg 2 " + str(values_w[3]))
+#print("Reg 3 " + str(values_w[4]))
+
 #print(data[0]['mapCodingInfo']['DurationInMinutes'])
+#sttime=datetime.datetime.strptime('0:0','%H:%M')
+#print("Hour " + str(sttime.hour))
+#print("Min " + str(sttime.minute))
+
 
 session = TwistedRequestsSession()
 
@@ -96,6 +137,7 @@ else:
 
 from ctypes import *
 from datetime import datetime
+from datetime import timedelta
 import time as _time
 
 #-----------------------------------------#
@@ -176,12 +218,18 @@ def handleFailure(f):
 	 new_data = 0
 #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
+DurationInMinutes = '0'
+Days = ''
+StartTime = '0:0'
 def print_status(r):
  		global csvfile
     		global writer
     		global new_data
 		global data_was_updated
 		global sending_in_progress
+		global DurationInMinutes
+		global Days
+		global StartTime
 
 		sending_in_progress = 0
 		log.info('Status GET: '+str(r.status_code))
@@ -210,6 +258,10 @@ def print_status(r):
 #			data_was_updated = 1
 #	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 			b = 1
+def setBit(int_type, offset):
+     mask = 1 << offset
+     return(int_type | mask)
+
 delay = 0
 def updating_cloud(a):
     global csvfile
@@ -224,6 +276,9 @@ def updating_cloud(a):
     global Day
     global Hour
     global Min
+    global DurationInMinutes
+    global Days
+    global StartTime
 
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
@@ -274,6 +329,8 @@ def updating_cloud(a):
 	# Ask command for devices (first getState then if ok resetState)
 	#----------------------------------------------------------------#
 	delay = delay + 1
+
+
 	if delay > 5:
 	   csvfile.close()
 	   context  = a[0]
@@ -286,6 +343,37 @@ def updating_cloud(a):
            values_w[0] = bi/65536
            values_w[1] = bi - 65536*values_w[0]
 
+	   values_w[2] = 0
+           if str(Days).find('Mon') > -1:
+		values_w[2] = values_w[2] + 1
+           if str(Days).find('Tue') > -1:
+                values_w[2] = values_w[2] + 2
+           if str(Days).find('Wed') > -1:
+                values_w[2] = values_w[2] + 4
+           if str(Days).find('Thu') > -1:
+                values_w[2] = values_w[2] + 8
+           if str(Days).find('Fri') > -1:
+                values_w[2] = values_w[2] + 16
+           if str(Days).find('Sat') > -1:
+                values_w[2] = values_w[2] + 32
+           if str(Days).find('Sun') > -1:
+                values_w[2] = values_w[2] + 64
+
+	   sttime=datetime.strptime(StartTime,'%H:%M')
+	   drtime=datetime.strptime('0:0','%H:%M') + timedelta(minutes = int(DurationInMinutes))
+
+	   log.info("Hour " + str(sttime.hour))
+	   log.info("Min " + str(sttime.minute))
+
+	   values_w[2] = int(sttime.hour)*256 + values_w[2];
+	   values_w[3] = int(drtime.hour)*256+int(sttime.minute);
+	   values_w[4] = int(drtime.second)*256+int(drtime.minute);
+
+	   log.info("Reg 1 " + str(values_w[2]))
+
+           log.info("Reg 2 " + str(values_w[3]))
+ 
+           log.info("Reg 3 " + str(values_w[4]))
            log.info("Set 1 reg to one")
 	   context[slave_id].setValues(register, address, values_w)
 	   
