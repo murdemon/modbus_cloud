@@ -18,6 +18,11 @@ import sys
 import twisted
 from ftplib import FTP
 from requests_twisted import TwistedRequestsSession
+import json
+
+
+#data = json.loads('[{"LobjectId":2,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"DurationInMinutes":"10","Days":"Tue,Thu","Start Time":"8:00"}}]')
+#print(data[0]['mapCodingInfo']['DurationInMinutes'])
 
 session = TwistedRequestsSession()
 
@@ -27,6 +32,7 @@ session = TwistedRequestsSession()
 config = ConfigParser.RawConfigParser()
 config.read('/etc/updating-server.conf')
 post_url = config.get('post_conf','post_url')
+valve_url = config.get('post_conf','valve_url')
 
 USER = config.get('post_conf','ftp_user')
 PASS = config.get('post_conf','ftp_pass')
@@ -178,22 +184,32 @@ def print_status(r):
 		global sending_in_progress
 
 		sending_in_progress = 0
-		log.info('Status: '+str(r.status_code))
+		log.info('Status GET: '+str(r.status_code))
+                log.info('Body GET: '+str(r.text))
 
                 if r.status_code == 200:
-                        csvfile = open('/home/pi/setSensorData.csv', 'wb')
-                        new_data = 0
-                        data_was_updated = 1
-	                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+#                        csvfile = open('/home/pi/setSensorData.csv', 'wb')
+#                        new_data = 0
+#                        data_was_updated = 1
+#
+# 	                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+                        data = r.json()
+			DurationInMinutes = data[0]['mapCodingInfo']['DurationInMinutes']
+                        Days = data[0]['mapCodingInfo']['Days']
+                        StartTime = data[0]['mapCodingInfo']['Start Time']
+			log.info('Data JSON '+str(Days)+' '+str(StartTime)+' '+str(DurationInMinutes))
+
                 elif r.status_code == 404:
 #                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
-                        new_data = 0
-                	data_was_updated = 1
+#                        new_data = 0
+#                	data_was_updated = 1
+			b = 1
 		else:
 #                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
-                        new_data = 0
-			data_was_updated = 1
+#                        new_data = 0
+#			data_was_updated = 1
 #	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+			b = 1
 delay = 0
 def updating_cloud(a):
     global csvfile
@@ -222,6 +238,10 @@ def updating_cloud(a):
         #r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
 	#r.addCallback(print_status)
 	#r.addErrback(handleFailure)
+       r = session.get(valve_url)
+       r.addCallback(print_status)
+       r.addErrback(handleFailure)
+
        try:	
 	ftp = FTP()
     	ftp.connect(SERVER, PORT)
