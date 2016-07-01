@@ -16,6 +16,7 @@ import csv
 import grequests
 import sys
 import twisted
+from ftplib import FTP
 from requests_twisted import TwistedRequestsSession
 
 session = TwistedRequestsSession()
@@ -27,7 +28,14 @@ config = ConfigParser.RawConfigParser()
 config.read('/etc/updating-server.conf')
 post_url = config.get('post_conf','post_url')
 
+USER = config.get('post_conf','ftp_user')
+PASS = config.get('post_conf','ftp_pass')
 
+########### MODIFY IF YOU WANT ############
+
+SERVER = config.get('post_conf','ftp_url')
+PORT = 21
+BINARY_STORE = True
 #---------------------------------------------------------------------------# 
 # import the twisted libraries we need
 #---------------------------------------------------------------------------# 
@@ -101,6 +109,8 @@ def save_csv(val, sensor_num):
 		global dt_now_PLC
 #		now = datetime.now()
 #		dt = datetime.now()
+		userrecordid = config.get('post_conf','ftp_userrecordid')
+		weatherstationrecordid = config.get('post_conf','ftp_weatherstationrecordid')
 		now = dt_now_PLC
 		dt = dt_now_PLC
 		timestamp = _time.mktime(dt.timetuple())
@@ -111,7 +121,7 @@ def save_csv(val, sensor_num):
 				 "Flag": config.get('Sensor_'+str(sensor_num),'Flag'),\
 				 "ObjectId": config.get('Sensor_'+str(sensor_num),'ObjectId'),\
                                  "ObjectType": config.get('Sensor_'+str(sensor_num),'ObjectType'),\
-                                 "MobileRecordId": "SensorData"+str(sensor_num)+"-"+str(timestamp),\
+                                 "MobileRecordId": "SensorData"+str(sensor_num)+"-"+str(timestamp)+"-"+weatherstationrecordid+"-"+userrecordid,\
                                  "Functional Group Name": config.get('Sensor_'+str(sensor_num),'Functional Group Name'),\
                                  "Organization Name": config.get('Sensor_'+str(sensor_num),'Organization Name'),\
                                  "Organization Number": config.get('Sensor_'+str(sensor_num),'Organization Number'),\
@@ -193,20 +203,51 @@ def updating_cloud(a):
     global data_was_updated
     global sending_in_progress
     global delay
+    global Year
+    global Month
+    global Day
+    global Hour
+    global Min
 
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
     if new_data == 1 and sending_in_progress == 0:
-        csvfile.close()
-	sending_in_progress = 1
+       csvfile.close()
+       sending_in_progress = 1
 	#-----------------------------------------------#
 	# if have ne data make API setSensorData
 	#-----------------------------------------------#
-        log.info('Upload data to Cloud')
-        multiple_files = [('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
-        r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
-	r.addCallback(print_status)
-	r.addErrback(handleFailure) 
+       log.info('Upload data to Cloud')
+        #multiple_files = [('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
+        #r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
+	#r.addCallback(print_status)
+	#r.addErrback(handleFailure)
+       try:	
+	ftp = FTP()
+    	ftp.connect(SERVER, PORT)
+    	ftp.login(USER, PASS) 
+	upload_file =  open('/home/pi/setSensorData.csv', 'r')
+	userrecordid = config.get('post_conf','ftp_userrecordid')
+        orgnum = config.get('Sensor_1','Organization Number')
+        final_file_name = '/weather/'+str(int(Year)).zfill(4)+str(int(Month)).zfill(2)+str(int(Day)).zfill(2)+'-'+str(int(Hour)).zfill(2)+str(int(Min)).zfill(2)+'-1-'+orgnum+'-'+userrecordid+'.csv'
+	result = ftp.storbinary('STOR '+ final_file_name, upload_file)
+        log.info('Result =' + str(result))				
+        sending_in_progress = 0
+
+	if result[0:3] == '226':
+		log.info('Uploading good')
+                csvfile = open('/home/pi/setSensorData.csv', 'wb')
+                new_data = 0
+                data_was_updated = 1
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+ 	else:
+		log.info('Uploading bed')
+                new_data = 0
+                data_was_updated = 1
+       except:
+                log.info('Uploading bed')
+                new_data = 0
+                data_was_updated = 1
 
     if data_was_updated == 1:   
 	#----------------------------------------------------------------#
@@ -217,7 +258,7 @@ def updating_cloud(a):
 	   csvfile.close()
 	   context  = a[0]
 	   register = 3
-    	   slave_id = 0x00
+     	   slave_id = 0x00
     	   address  = 0x1000
     	   values_w   = context[slave_id].getValues(register, address, count=40)
 
