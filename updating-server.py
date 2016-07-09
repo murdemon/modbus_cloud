@@ -279,6 +279,16 @@ def updating_cloud(a):
     global DurationInMinutes
     global Days
     global StartTime
+    global new_data
+    global one_send_only
+    global UpdateTime
+    global old_values
+    global Year
+    global Month
+    global Day
+    global Hour
+    global Min
+    global Sec
 
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
@@ -297,11 +307,13 @@ def updating_cloud(a):
        r.addCallback(print_status)
        r.addErrback(handleFailure)
 
+       upload_file =  open('/home/pi/setSensorData.csv', 'r')
+
        try:	
 	ftp = FTP()
     	ftp.connect(SERVER, PORT)
     	ftp.login(USER, PASS) 
-	upload_file =  open('/home/pi/setSensorData.csv', 'r')
+#	upload_file =  open('/home/pi/setSensorData.csv', 'r')
 	userrecordid = config.get('post_conf','ftp_userrecordid')
         orgnum = config.get('Sensor_1','Organization Number')
         final_file_name = '/weather/'+str(int(Year)).zfill(4)+str(int(Month)).zfill(2)+str(int(Day)).zfill(2)+'-'+str(int(Hour)).zfill(2)+str(int(Min)).zfill(2)+'-1-'+orgnum+'-'+userrecordid+'.csv'
@@ -310,19 +322,27 @@ def updating_cloud(a):
         sending_in_progress = 0
 
 	if result[0:3] == '226':
+		upload_file.close()
 		log.info('Uploading good')
                 csvfile = open('/home/pi/setSensorData.csv', 'wb')
                 new_data = 0
                 data_was_updated = 1
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
  	else:
+		upload_file.close()		
 		log.info('Uploading bed')
                 new_data = 0
                 data_was_updated = 1
+                csvfile = open('/home/pi/setSensorData.csv', 'ab')
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+
        except:
+		upload_file.close()
                 log.info('Uploading bed')
                 new_data = 0
                 data_was_updated = 1
+                csvfile = open('/home/pi/setSensorData.csv', 'ab')
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
     if data_was_updated == 1:   
 	#----------------------------------------------------------------#
@@ -331,8 +351,8 @@ def updating_cloud(a):
 	delay = delay + 1
 
 
-	if delay > 5:
-	   csvfile.close()
+	if delay == 2:
+#	   csvfile.close()
 	   context  = a[0]
 	   register = 3
      	   slave_id = 0x00
@@ -342,6 +362,7 @@ def updating_cloud(a):
 	   bi = convert_i(1.0)
            values_w[0] = bi/65536
            values_w[1] = bi - 65536*values_w[0]
+
 
 	   values_w[2] = 0
            if str(Days).find('Mon') > -1:
@@ -376,7 +397,42 @@ def updating_cloud(a):
            log.info("Reg 3 " + str(values_w[4]))
            log.info("Set 1 reg to one")
 	   context[slave_id].setValues(register, address, values_w)
-	   
+
+        if delay > 4:
+
+           context  = a[0]
+           register = 3
+           slave_id = 0x00
+           address  = 0x0
+#           values_w   = context[slave_id].getValues(register, address, count = 100)
+           values_zer = [65535]*100
+	   context[slave_id].setValues(register, address, values_zer)
+	   log.info("Clear all input registers")	  
+
+
+           context  = a[0]
+           register = 3
+           slave_id = 0x00
+           address  = 0x1000
+#           values_w   = context[slave_id].getValues(register, address, count = 100)
+           values_zer = [65535]*100
+           context[slave_id].setValues(register, address, values_zer)
+           log.info("Clear all output registers")
+
+	   Year = 0
+	   Month = 0
+	   Day = 0
+	   Hour = -1
+	   Min = -1
+	   Sec = -1
+
+	   old_values_zer = [65535]*8192
+	   old_values = old_values_zer
+	   new_data = 0
+           one_send_only = 0 
+           UpdateTime = 1   
+	   delay = 0	   
+
 	   data_was_updated = 0
 
 	
@@ -476,7 +532,7 @@ def updating_writer(a):
     if UpdateTime == 0:
      for i in [40, 41, 42, 43, 44, 45]:
         check_val_change_RTC(65535,values[i*2],65535,values[i*2+1],i+1)
- 
+
 #---------------------------------------------------------------------------# 
 # initialize your data store
 #---------------------------------------------------------------------------# 
