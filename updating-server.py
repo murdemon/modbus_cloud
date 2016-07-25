@@ -16,48 +16,55 @@ import csv
 import grequests
 import sys
 import twisted
-#import datetime
+import datetime
 from ftplib import FTP
 from requests_twisted import TwistedRequestsSession
 import json
 
 
-#data = json.loads('[{"LobjectId":2,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"DurationInMinutes":"60","Days":"Mon,Tue","Start Time":"8:30"}}]')
-#DurationInMinutes = data[0]['mapCodingInfo']['DurationInMinutes']
-#Days = data[0]['mapCodingInfo']['Days']
-#StartTime = data[0]['mapCodingInfo']['Start Time']
-#values_w = [0]*20
+DurationInMinutes = ['0']*10
+Days = ['']*10
+StartTime = ['0:0']*10
 
-#print(Days)
-#values_w[2] = 0
-#if str(Days).find('Mon') > -1:
-#                values_w[2] = values_w[2] + 1
-#if str(Days).find('Tue') > -1:
-#                values_w[2] = values_w[2] + 2
-#if str(Days).find('Wed') > -1:
-#                values_w[2] = values_w[2] + 4
-#if str(Days).find('Thu') > -1:
-#                values_w[2] = values_w[2] + 8
-#if str(Days).find('Fri') > -1:
-#                values_w[2] = values_w[2] + 16
-#if str(Days).find('Sat') > -1:
-#                values_w[2] = values_w[2] + 32
-#if str(Days).find('Sun') > -1:
-#                values_w[2] = values_w[2] + 64
 
-#sttime=datetime.datetime.strptime(StartTime,'%H:%M')
-#drtime=datetime.datetime.strptime('0:0','%H:%M') + datetime.timedelta(minutes = int(DurationInMinutes))
+#data = json.loads('[{"LobjectId":2,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"454","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":3,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"1","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":4,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"2","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:20"}},{"LobjectId":5,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"3","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:40"}},{"LobjectId":6,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"4","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:50"}},{"LobjectId":7,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"5","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":8,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"6","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"9:00"}},{"LobjectId":9,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"7","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"10:30"}},{"LobjectId":10,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"8","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"11:30"}}]')
 
-#print("Hour " + str(sttime.hour))
-#print("Min " + str(sttime.minute))
+#for i in [1, 2, 3, 4, 5, 6, 7]:
+# DurationInMinutes[i] = data[i]['mapCodingInfo']['DurationInMinutes']
+# Days[i] = data[i]['mapCodingInfo']['Days']
+# StartTime[i] = data[i]['mapCodingInfo']['Start Time']
+# values_w = [0]*20
 
-#values_w[2] = int(sttime.hour)*256 + values_w[2];
-#values_w[3] = int(drtime.hour)*256+int(sttime.minute);
-#values_w[4] = int(drtime.second)*256+int(drtime.minute);
+# print(Days[i])
+# values_w[2] = 0
+# if str(Days[i]).find('Mon') > -1:
+#                 values_w[2] = values_w[2] + 1
+# if str(Days[i]).find('Tue') > -1:
+#                 values_w[2] = values_w[2] + 2
+# if str(Days[i]).find('Wed') > -1:
+#                 values_w[2] = values_w[2] + 4
+# if str(Days[i]).find('Thu') > -1:
+#                 values_w[2] = values_w[2] + 8
+# if str(Days[i]).find('Fri') > -1:
+#                 values_w[2] = values_w[2] + 16
+# if str(Days[i]).find('Sat') > -1:
+#                 values_w[2] = values_w[2] + 32
+# if str(Days[i]).find('Sun') > -1:
+#                 values_w[2] = values_w[2] + 64  
 
-#print("Reg 1 " + str(values_w[2]))
-#print("Reg 2 " + str(values_w[3]))
-#print("Reg 3 " + str(values_w[4]))
+# sttime=datetime.datetime.strptime(StartTime[i],'%H:%M')
+# drtime=datetime.datetime.strptime('0:0','%H:%M') + datetime.timedelta(minutes = int(DurationInMinutes[i]))
+
+# print("Hour " + str(sttime.hour))
+# print("Min " + str(sttime.minute))
+
+# values_w[2] = int(sttime.hour)*256 + values_w[2];
+# values_w[3] = int(drtime.hour)*256+int(sttime.minute);
+# values_w[4] = int(drtime.second)*256+int(drtime.minute); 
+
+# print("Reg 1 " + str(values_w[2]))
+# print("Reg 2 " + str(values_w[3]))
+# print("Reg 3 " + str(values_w[4]))
 
 #print(data[0]['mapCodingInfo']['DurationInMinutes'])
 #sttime=datetime.datetime.strptime('0:0','%H:%M')
@@ -218,9 +225,6 @@ def handleFailure(f):
 	 new_data = 0
 #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
-DurationInMinutes = '0'
-Days = ''
-StartTime = '0:0'
 def print_status(r):
  		global csvfile
     		global writer
@@ -242,10 +246,11 @@ def print_status(r):
 #
 # 	                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
                         data = r.json()
-			DurationInMinutes = data[0]['mapCodingInfo']['DurationInMinutes']
-                        Days = data[0]['mapCodingInfo']['Days']
-                        StartTime = data[0]['mapCodingInfo']['Start Time']
-			log.info('Data JSON '+str(Days)+' '+str(StartTime)+' '+str(DurationInMinutes))
+			for i in [1, 2, 3, 4, 5, 6, 7, 8]:
+				DurationInMinutes[i] = data[i]['mapCodingInfo']['DurationInMinutes']
+                        	Days[i] = data[i]['mapCodingInfo']['Days']
+                        	StartTime[i] = data[i]['mapCodingInfo']['Start Time']
+				log.info('Data JSON '+str(Days[i])+' '+str(StartTime[i])+' '+str(DurationInMinutes[i]))
 
                 elif r.status_code == 404:
 #                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
@@ -364,38 +369,40 @@ def updating_cloud(a):
            values_w[1] = bi - 65536*values_w[0]
 
 
-	   values_w[2] = 0
-           if str(Days).find('Mon') > -1:
-		values_w[2] = values_w[2] + 1
-           if str(Days).find('Tue') > -1:
-                values_w[2] = values_w[2] + 2
-           if str(Days).find('Wed') > -1:
-                values_w[2] = values_w[2] + 4
-           if str(Days).find('Thu') > -1:
-                values_w[2] = values_w[2] + 8
-           if str(Days).find('Fri') > -1:
-                values_w[2] = values_w[2] + 16
-           if str(Days).find('Sat') > -1:
-                values_w[2] = values_w[2] + 32
-           if str(Days).find('Sun') > -1:
-                values_w[2] = values_w[2] + 64
+	   for i in [1, 2, 3, 4, 5, 6, 7, 8]:
 
-	   sttime=datetime.strptime(StartTime,'%H:%M')
-	   drtime=datetime.strptime('0:0','%H:%M') + timedelta(minutes = int(DurationInMinutes))
+	    values_w[2+(i-1)*4] = 0
+            if str(Days[i]).find('Mon') > -1:
+ 		values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 1
+            if str(Days[i]).find('Tue') > -1:
+                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 2
+            if str(Days[i]).find('Wed') > -1:
+                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 4
+            if str(Days[i]).find('Thu') > -1:
+                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 8
+            if str(Days[i]).find('Fri') > -1:
+                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 16
+            if str(Days[i]).find('Sat') > -1:
+                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 32
+            if str(Days[i]).find('Sun') > -1:
+                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 64
 
-	   log.info("Hour " + str(sttime.hour))
-	   log.info("Min " + str(sttime.minute))
-
-	   values_w[2] = int(sttime.hour)*256 + values_w[2];
-	   values_w[3] = int(drtime.hour)*256+int(sttime.minute);
-	   values_w[4] = int(drtime.second)*256+int(drtime.minute);
-
-	   log.info("Reg 1 " + str(values_w[2]))
-
-           log.info("Reg 2 " + str(values_w[3]))
+	    sttime=datetime.strptime(StartTime[i],'%H:%M')
+	    drtime=datetime.strptime('0:0','%H:%M') + timedelta(minutes = int(DurationInMinutes[i]))
  
-           log.info("Reg 3 " + str(values_w[4]))
-           log.info("Set 1 reg to one")
+ 	    log.info("Hour " + str(sttime.hour))
+ 	    log.info("Min " + str(sttime.minute))
+
+	    values_w[2+(i-1)*4] = int(sttime.hour)*256 + values_w[2+(i-1)*4];
+	    values_w[3+(i-1)*4] = int(drtime.hour)*256+int(sttime.minute);
+	    values_w[4+(i-1)*4] = int(drtime.second)*256+int(drtime.minute);
+
+	    log.info("Reg 1 " + str(values_w[2+(i-1)*4]))
+
+            log.info("Reg 2 " + str(values_w[3+(i-1)*4]))
+ 
+            log.info("Reg 3 " + str(values_w[4+(i-1)*4]))
+            log.info("Set 1 reg to one")
 	   context[slave_id].setValues(register, address, values_w)
 
         if delay > 4:
