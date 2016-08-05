@@ -25,6 +25,7 @@ import json
 DurationInMinutes = ['0']*10
 Days = ['']*10
 StartTime = ['0:0']*10
+PowerOn = ['']*10
 
 
 #data = json.loads('[{"LobjectId":2,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"454","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":3,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"1","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":4,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"2","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:20"}},{"LobjectId":5,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"3","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:40"}},{"LobjectId":6,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"4","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:50"}},{"LobjectId":7,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"5","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":8,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"6","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"9:00"}},{"LobjectId":9,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"7","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"10:30"}},{"LobjectId":10,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"8","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"11:30"}}]')
@@ -234,6 +235,7 @@ def print_status(r):
 		global DurationInMinutes
 		global Days
 		global StartTime
+		global PowerOn
 
 		sending_in_progress = 0
 		log.info('Status GET: '+str(r.status_code))
@@ -247,9 +249,11 @@ def print_status(r):
 # 	                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
                         data = r.json()
 			for i in [1, 2, 3, 4, 5, 6, 7, 8]:
-				DurationInMinutes[i] = data[i]['mapCodingInfo']['DurationInMinutes']
-                        	Days[i] = data[i]['mapCodingInfo']['Days']
-                        	StartTime[i] = data[i]['mapCodingInfo']['Start Time']
+				DurationInMinutes[i] = data[i-1]['mapCodingInfo']['DurationInMinutes']
+                        	Days[i] = data[i-1]['mapCodingInfo']['Days']
+                        	StartTime[i] = data[i-1]['mapCodingInfo']['Start Time']
+                                PowerOn[i] = data[i-1]['mapCodingInfo']['PowerOn']
+				
 				log.info('Data JSON '+str(Days[i])+' '+str(StartTime[i])+' '+str(DurationInMinutes[i]))
 
                 elif r.status_code == 404:
@@ -294,6 +298,7 @@ def updating_cloud(a):
     global Hour
     global Min
     global Sec
+    global PowerOn
 
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
@@ -393,9 +398,17 @@ def updating_cloud(a):
  	    log.info("Hour " + str(sttime.hour))
  	    log.info("Min " + str(sttime.minute))
 
-	    values_w[2+(i-1)*4] = int(sttime.hour)*256 + values_w[2+(i-1)*4];
-	    values_w[3+(i-1)*4] = int(drtime.hour)*256+int(sttime.minute);
-	    values_w[4+(i-1)*4] = int(drtime.second)*256+int(drtime.minute);
+	    values_w[2+(i-1)*4] = int(sttime.hour)*256 + values_w[2+(i-1)*4]
+	    values_w[3+(i-1)*4] = int(drtime.hour)*256+int(sttime.minute)
+	    
+	    values_w[4+(i-1)*4] = int(drtime.second)*256+int(drtime.minute)
+
+	    if str(PowerOn[i]).find('manualon') > -1:
+		values_w[4+(i-1)*4] = int(drtime.second)*256+int(60)
+
+            if str(PowerOn[i]).find('manualon') > -1:
+                values_w[4+(i-1)*4] = int(drtime.second)*256+int(61)
+
 
 	    log.info("Reg 1 " + str(values_w[2+(i-1)*4]))
 
