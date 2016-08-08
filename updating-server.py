@@ -20,7 +20,55 @@ import datetime
 from ftplib import FTP
 from requests_twisted import TwistedRequestsSession
 import json
+from flask import jsonify
 
+from twisted.internet import reactor
+from twisted.web.server import Site
+from twisted.web.wsgi import WSGIResource
+from flask import Flask
+from flask import request
+from flask import abort
+from twisted.internet import ssl
+
+app = Flask(__name__)
+
+@app.route('/rest/jesse/jesse8/setvalve', methods=['POST'])
+def setvalve():
+    global context
+    if not request.json or not 'PowerOn' or not 'Item Number' in request.json:
+        abort(400)
+
+    register = 3
+    slave_id = 0x00
+    address  = 0x1000
+    values_w   = context[slave_id].getValues(register, address, count=40)
+    data = request.json
+#    log.info(json(data))
+    Item = data['Item Number']
+    Command = data['PowerOn']
+    log.info("Item " + str(Item))
+    log.info("Command " + str(Command))
+
+    if str(Command).find('manualon') > -1:
+                values_w[4+(int(Item)-1)*4] = int(values_w[4+(int(Item)-1)*4]/256)*256+int(60)
+
+    if str(Command).find('manualoff') > -1:
+                values_w[4+(int(Item)-1)*4] = int(values_w[4+(int(Item)-1)*4]/256)*256+int(61)
+
+    context[slave_id].setValues(register, address, values_w)
+   
+    return jsonify(request.json),200
+
+@app.route('/')
+def index():
+    return "API 1.0"
+
+if __name__ == '__main__':
+    resource = WSGIResource(reactor, reactor.getThreadPool(), app)
+    site = Site(resource)
+#    reactor.listenTCP(80, site)
+    reactor.listenSSL(443, site, ssl.DefaultOpenSSLContextFactory('server_unencrypted.key', 'server.crt'))
+#    reactor.run()
 
 DurationInMinutes = ['0']*10
 Days = ['']*10
@@ -28,49 +76,6 @@ StartTime = ['0:0']*10
 PowerOn = ['']*10
 
 
-#data = json.loads('[{"LobjectId":2,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"454","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":3,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"1","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":4,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"2","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:20"}},{"LobjectId":5,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"3","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:40"}},{"LobjectId":6,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"4","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:50"}},{"LobjectId":7,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"5","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"8:00"}},{"LobjectId":8,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"6","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"9:00"}},{"LobjectId":9,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"7","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"10:30"}},{"LobjectId":10,"objectType":"NRT347","errorCode":"","errorMessage":"","csvDataFilePath":"","iCsvRow":-1,"mobileRecordId":"","mapCodingInfo":{"Item Number":"8","DurationInMinutes":"10","Days":"Tu,Th","Start Time":"11:30"}}]')
-
-#for i in [1, 2, 3, 4, 5, 6, 7]:
-# DurationInMinutes[i] = data[i]['mapCodingInfo']['DurationInMinutes']
-# Days[i] = data[i]['mapCodingInfo']['Days']
-# StartTime[i] = data[i]['mapCodingInfo']['Start Time']
-# values_w = [0]*20
-
-# print(Days[i])
-# values_w[2] = 0
-# if str(Days[i]).find('Mon') > -1:
-#                 values_w[2] = values_w[2] + 1
-# if str(Days[i]).find('Tue') > -1:
-#                 values_w[2] = values_w[2] + 2
-# if str(Days[i]).find('Wed') > -1:
-#                 values_w[2] = values_w[2] + 4
-# if str(Days[i]).find('Thu') > -1:
-#                 values_w[2] = values_w[2] + 8
-# if str(Days[i]).find('Fri') > -1:
-#                 values_w[2] = values_w[2] + 16
-# if str(Days[i]).find('Sat') > -1:
-#                 values_w[2] = values_w[2] + 32
-# if str(Days[i]).find('Sun') > -1:
-#                 values_w[2] = values_w[2] + 64  
-
-# sttime=datetime.datetime.strptime(StartTime[i],'%H:%M')
-# drtime=datetime.datetime.strptime('0:0','%H:%M') + datetime.timedelta(minutes = int(DurationInMinutes[i]))
-
-# print("Hour " + str(sttime.hour))
-# print("Min " + str(sttime.minute))
-
-# values_w[2] = int(sttime.hour)*256 + values_w[2];
-# values_w[3] = int(drtime.hour)*256+int(sttime.minute);
-# values_w[4] = int(drtime.second)*256+int(drtime.minute); 
-
-# print("Reg 1 " + str(values_w[2]))
-# print("Reg 2 " + str(values_w[3]))
-# print("Reg 3 " + str(values_w[4]))
-
-#print(data[0]['mapCodingInfo']['DurationInMinutes'])
-#sttime=datetime.datetime.strptime('0:0','%H:%M')
-#print("Hour " + str(sttime.hour))
-#print("Min " + str(sttime.minute))
 
 
 session = TwistedRequestsSession()
@@ -406,7 +411,7 @@ def updating_cloud(a):
 	    if str(PowerOn[i]).find('manualon') > -1:
 		values_w[4+(i-1)*4] = int(drtime.second)*256+int(60)
 
-            if str(PowerOn[i]).find('manualon') > -1:
+            if str(PowerOn[i]).find('manualoff') > -1:
                 values_w[4+(i-1)*4] = int(drtime.second)*256+int(61)
 
 
@@ -436,7 +441,7 @@ def updating_cloud(a):
            address  = 0x1000
 #           values_w   = context[slave_id].getValues(register, address, count = 100)
            values_zer = [65535]*100
-           context[slave_id].setValues(register, address, values_zer)
+#          context[slave_id].setValues(register, address, values_zer)
            log.info("Clear all output registers")
 
 	   Year = 0
