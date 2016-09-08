@@ -29,6 +29,8 @@ from flask import Flask
 from flask import request
 from flask import abort
 from twisted.internet import ssl
+from twisted.internet import reactor
+reactor.suggestThreadPoolSize(10)
 
 app = Flask(__name__)
 
@@ -67,7 +69,7 @@ if __name__ == '__main__':
     resource = WSGIResource(reactor, reactor.getThreadPool(), app)
     site = Site(resource)
 #    reactor.listenTCP(80, site)
-    reactor.listenSSL(443, site, ssl.DefaultOpenSSLContextFactory('server_unencrypted.key', 'server.crt'))
+    reactor.listenSSL(443, site, ssl.DefaultOpenSSLContextFactory('/etc/server_unencrypted.key', '/etc/server.crt'))
 #    reactor.run()
 
 DurationInMinutes = ['0']*10
@@ -216,6 +218,7 @@ old_values = [65535]*8192
 new_data = 0
 data_was_updated = 0
 sending_in_progress = 0
+requestdone = 0
 
 def handleFailure(f):
          global csvfile
@@ -223,12 +226,16 @@ def handleFailure(f):
          global new_data
          global data_was_updated
          global sending_in_progress
+	 global requestdone
+	 global session 
 
+	 requestdone = 1
 	 sending_in_progress = 0 
 	 log.info("Timeout POST Sensor data to Cloud ")
 #         csvfile = open('/home/pi/setSensorData.csv', 'ab')
          data_was_updated = 1 
 	 new_data = 0
+	 session.close()
 #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 def print_status(r):
@@ -241,7 +248,10 @@ def print_status(r):
 		global Days
 		global StartTime
 		global PowerOn
+		global requestdone
+		global session
 
+		requestdone = 1
 		sending_in_progress = 0
 		log.info('Status GET: '+str(r.status_code))
                 log.info('Body GET: '+str(r.text))
@@ -272,6 +282,8 @@ def print_status(r):
 #			data_was_updated = 1
 #	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 			b = 1
+                session.close()
+
 def setBit(int_type, offset):
      mask = 1 << offset
      return(int_type | mask)
@@ -304,6 +316,8 @@ def updating_cloud(a):
     global Min
     global Sec
     global PowerOn
+    global requestdone
+    global session
 
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
@@ -318,7 +332,7 @@ def updating_cloud(a):
         #r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
 	#r.addCallback(print_status)
 	#r.addErrback(handleFailure)
-       r = session.get(valve_url)
+       r = session.get(valve_url, timeout=(3, 500), stream=False)
        r.addCallback(print_status)
        r.addErrback(handleFailure)
 
@@ -326,13 +340,18 @@ def updating_cloud(a):
 
        try:	
 	ftp = FTP()
-    	ftp.connect(SERVER, PORT)
+	log.info('Server:' + str(SERVER))
+	log.info('Port:' + str(PORT))
+
+    	ftp.connect(SERVER, PORT, timeout=5)
     	ftp.login(USER, PASS) 
 #	upload_file =  open('/home/pi/setSensorData.csv', 'r')
 	userrecordid = config.get('post_conf','ftp_userrecordid')
         orgnum = config.get('Sensor_1','Organization Number')
         final_file_name = '/weather/'+str(int(Year)).zfill(4)+str(int(Month)).zfill(2)+str(int(Day)).zfill(2)+'-'+str(int(Hour)).zfill(2)+str(int(Min)).zfill(2)+'-1-'+orgnum+'-'+userrecordid+'.csv'
-	result = ftp.storbinary('STOR '+ final_file_name, upload_file)
+	log.info('File name:' + str(final_file_name))
+	result = ftp.storbinary('STOR '+ final_file_name, upload_file, )
+        ftp.quit()
         log.info('Result =' + str(result))				
         sending_in_progress = 0
 
@@ -363,11 +382,13 @@ def updating_cloud(a):
 	#----------------------------------------------------------------#
 	# Ask command for devices (first getState then if ok resetState)
 	#----------------------------------------------------------------#
-	delay = delay + 1
+	if requestdone == 1:
+	   delay = delay + 1
 
 
-	if delay == 2:
+	if delay == 2 and requestdone == 1:
 #	   csvfile.close()
+
 	   context  = a[0]
 	   register = 3
      	   slave_id = 0x00
@@ -408,9 +429,10 @@ def updating_cloud(a):
 	    
 	    values_w[4+(i-1)*4] = int(drtime.second)*256+int(drtime.minute)
 
+            log.info("Hour Manual status:" + str(PowerOn[i]))
 	    if str(PowerOn[i]).find('manualon') > -1:
 		values_w[4+(i-1)*4] = int(drtime.second)*256+int(60)
-
+		log.info("Manual on valve N" + str(i))
             if str(PowerOn[i]).find('manualoff') > -1:
                 values_w[4+(i-1)*4] = int(drtime.second)*256+int(61)
 
@@ -424,6 +446,7 @@ def updating_cloud(a):
 	   context[slave_id].setValues(register, address, values_w)
 
         if delay > 4:
+	   requestdone = 0
 
            context  = a[0]
            register = 3
@@ -440,8 +463,8 @@ def updating_cloud(a):
            slave_id = 0x00
            address  = 0x1000
 #           values_w   = context[slave_id].getValues(register, address, count = 100)
-           values_zer = [65535]*100
-#          context[slave_id].setValues(register, address, values_zer)
+           values_zer = [65535]*2
+           context[slave_id].setValues(register, address, values_zer)
            log.info("Clear all output registers")
 
 	   Year = 0
@@ -548,7 +571,7 @@ def updating_writer(a):
 #--------------------------------#
      for i in [40, 41, 42, 43, 44, 45]:
         check_val_change_RTC(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
-     for i in [0, 1, 2, 3, 4, 12, 13, 18]:
+     for i in [0, 1, 2, 3, 4, 5, 6, 12, 13, 18]:
 	check_val_change(old_values[i*2],values[i*2],old_values[i*2+1],values[i*2+1],i+1)
      if new_data == 1:
         one_send_only = 1
