@@ -220,6 +220,70 @@ data_was_updated = 0
 sending_in_progress = 0
 requestdone = 0
 
+def handleFailure1(f):
+         global csvfile
+         global writer
+         global new_data
+         global data_was_updated
+         global sending_in_progress
+	 global requestdone
+	 global session 
+
+	 requestdone = 1
+	 sending_in_progress = 0 
+	 log.info("Timeout POST Sensor data to Cloud ")
+         csvfile = open('/home/pi/setSensorData.csv', 'ab')
+         data_was_updated = 1 
+	 new_data = 0
+	 session.close()
+         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+
+def print_status1(r):
+ 		global csvfile
+    		global writer
+    		global new_data
+		global data_was_updated
+		global sending_in_progress
+		global DurationInMinutes
+		global Days
+		global StartTime
+		global PowerOn
+		global requestdone
+		global session
+
+		requestdone = 1
+		sending_in_progress = 0
+		log.info('Status POST CSV file: '+str(r.status_code))
+                log.info('Body POST: '+str(r.text))
+
+                if r.status_code == 200:
+                         csvfile = open('/home/pi/setSensorData.csv', 'wb')
+                         new_data = 0
+                         data_was_updated = 1
+
+ 	                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+#                        data = r.json()
+#			for i in [1, 2, 3, 4, 5, 6, 7, 8]:
+#				DurationInMinutes[i] = data[i-1]['mapCodingInfo']['DurationInMinutes']
+#                        	Days[i] = data[i-1]['mapCodingInfo']['Days']
+#                        	StartTime[i] = data[i-1]['mapCodingInfo']['Start Time']
+#                                PowerOn[i] = data[i-1]['mapCodingInfo']['PowerOn']
+				
+#				log.info('Data JSON '+str(Days[i])+' '+str(StartTime[i])+' '+str(DurationInMinutes[i]))
+
+                elif r.status_code == 404:
+                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
+                        new_data = 0
+                	data_was_updated = 1
+			b = 1
+		else:
+                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
+                        new_data = 0
+			data_was_updated = 1
+	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+
+                session.close()
+
 def handleFailure(f):
          global csvfile
          global writer
@@ -253,8 +317,8 @@ def print_status(r):
 
 		requestdone = 1
 		sending_in_progress = 0
-		log.info('Status GET: '+str(r.status_code))
-                log.info('Body GET: '+str(r.text))
+		log.info('Status GET Valves: '+str(r.status_code))
+                log.info('Body GET Valves: '+str(r.text))
 
                 if r.status_code == 200:
 #                        csvfile = open('/home/pi/setSensorData.csv', 'wb')
@@ -329,55 +393,56 @@ def updating_cloud(a):
 	# if have ne data make API setSensorData
 	#-----------------------------------------------#
        log.info('Upload data to Cloud')
-        #multiple_files = [('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
-        #r = session.post(post_url, files=multiple_files, timeout=60, stream=True)
-	#r.addCallback(print_status)
-	#r.addErrback(handleFailure)
+       multiple_files = [('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
+       r1 = session.post(post_url, files=multiple_files, timeout=60, stream=True)
+       r1.addCallback(print_status1)
+       r1.addErrback(handleFailure1)
+
        r = session.get(valve_url, timeout=(3, 500), stream=False)
        r.addCallback(print_status)
        r.addErrback(handleFailure)
 
-       upload_file =  open('/home/pi/setSensorData.csv', 'r')
+#       upload_file =  open('/home/pi/setSensorData.csv', 'r')
+#
+#       try:	
+#	ftp = FTP()
+#	log.info('Server:' + str(SERVER))
+#	log.info('Port:' + str(PORT))
 
-       try:	
-	ftp = FTP()
-	log.info('Server:' + str(SERVER))
-	log.info('Port:' + str(PORT))
-
-    	ftp.connect(SERVER, PORT, timeout=5)
-    	ftp.login(USER, PASS) 
+#    	ftp.connect(SERVER, PORT, timeout=5)
+#    	ftp.login(USER, PASS) 
 #	upload_file =  open('/home/pi/setSensorData.csv', 'r')
-	userrecordid = config.get('post_conf','ftp_userrecordid')
-        orgnum = config.get('Sensor_1','Organization Number')
-        final_file_name = '/weather/'+str(int(Year)).zfill(4)+str(int(Month)).zfill(2)+str(int(Day)).zfill(2)+'-'+str(int(Hour)).zfill(2)+str(int(Min)).zfill(2)+'-1-'+orgnum+'-'+userrecordid+'.csv'
-	log.info('File name:' + str(final_file_name))
-	result = ftp.storbinary('STOR '+ final_file_name, upload_file, )
-        ftp.quit()
-        log.info('Result =' + str(result))				
-        sending_in_progress = 0
+#	userrecordid = config.get('post_conf','ftp_userrecordid')
+#        orgnum = config.get('Sensor_1','Organization Number')
+#        final_file_name = '/weather/'+str(int(Year)).zfill(4)+str(int(Month)).zfill(2)+str(int(Day)).zfill(2)+'-'+str(int(Hour)).zfill(2)+str(int(Min)).zfill(2)+'-1-'+orgnum+'-'+userrecordid+'.csv'
+#	log.info('File name:' + str(final_file_name))
+#	result = ftp.storbinary('STOR '+ final_file_name, upload_file, )
+#        ftp.quit()
+#        log.info('Result =' + str(result))				
+#        sending_in_progress = 0
 
-	if result[0:3] == '226':
-		upload_file.close()
-		log.info('Uploading good')
-                csvfile = open('/home/pi/setSensorData.csv', 'wb')
-                new_data = 0
-                data_was_updated = 1
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
- 	else:
-		upload_file.close()		
-		log.info('Uploading bed')
-                new_data = 0
-                data_was_updated = 1
-                csvfile = open('/home/pi/setSensorData.csv', 'ab')
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+#	if result[0:3] == '226':
+#		upload_file.close()
+#		log.info('Uploading good')
+#                csvfile = open('/home/pi/setSensorData.csv', 'wb')
+#                new_data = 0
+#                data_was_updated = 1
+#                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+# 	else:
+#		upload_file.close()		
+#		log.info('Uploading bed')
+#                new_data = 0
+#                data_was_updated = 1
+#                csvfile = open('/home/pi/setSensorData.csv', 'ab')
+#                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
-       except:
-		upload_file.close()
-                log.info('Uploading bed')
-                new_data = 0
-                data_was_updated = 1
-                csvfile = open('/home/pi/setSensorData.csv', 'ab')
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+#       except:
+#		upload_file.close()
+#                log.info('Uploading bed')
+#                new_data = 0
+#                data_was_updated = 1
+#                csvfile = open('/home/pi/setSensorData.csv', 'ab')
+#                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
     if data_was_updated == 1:   
 	#----------------------------------------------------------------#
