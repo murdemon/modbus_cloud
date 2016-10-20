@@ -318,6 +318,7 @@ def updating_cloud(a):
     global PowerOn
     global requestdone
     global session
+    global dt_now_PLC
 
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
@@ -403,38 +404,58 @@ def updating_cloud(a):
 	   for i in [1, 2, 3, 4, 5, 6, 7, 8]:
 
 	    values_w[2+(i-1)*4] = 0
-            if str(Days[i]).find('Mon') > -1:
- 		values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 1
-            if str(Days[i]).find('Tue') > -1:
-                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 2
-            if str(Days[i]).find('Wed') > -1:
-                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 4
-            if str(Days[i]).find('Thu') > -1:
-                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 8
-            if str(Days[i]).find('Fri') > -1:
-                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 16
-            if str(Days[i]).find('Sat') > -1:
-                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 32
-            if str(Days[i]).find('Sun') > -1:
-                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 64
+	    AllDays = Days[i].split(",")
+	    AllStartTime = StartTime[i].split(",")
+	    AllDurations = DurationInMinutes[i].split(",")
 
-	    sttime=datetime.strptime(StartTime[i],'%H:%M')
-	    drtime=datetime.strptime('0:0','%H:%M') + timedelta(minutes = int(DurationInMinutes[i]))
+	    for j in range(len(AllDays)):
+		log.info("Vavel " + str(i) + " Day to work "+ AllDays[j])
+	    	TimeFrom = datetime.strptime(AllStartTime[j],"%H:%M")
+		log.info("Vavel " + str(i) + " Time from "+ datetime.strftime(TimeFrom,"%H:%M"))
+		TimeTo = TimeFrom + timedelta(minutes=int(AllDurations[j]))
+                log.info("Vavel " + str(i) + " Time to "+ datetime.strftime(TimeTo,"%H:%M"))
+		log.info("Day now " + dt_now_PLC.strftime("%a"))
+
+		TimeNow = datetime.strptime(dt_now_PLC.strftime("%H:%M"),"%H:%M")
+		log.info("Time now " + TimeNow.strftime("%H:%M"))
+
+		if dt_now_PLC.strftime("%a").find(AllDays[j]) > -1 and TimeNow > TimeFrom and TimeNow < TimeTo:
+			values_w[4+(i-1)*4] = int(0)*256+int(60)
+                	log.info("Shudler on valve N" + str(i))
+		else:
+			values_w[4+(i-1)*4] = int(0)*256+int(0)
+#            if str(Days[i]).find('Mon') > -1:
+# 		values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 1
+#            if str(Days[i]).find('Tue') > -1:
+#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 2
+#            if str(Days[i]).find('Wed') > -1:
+#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 4
+#            if str(Days[i]).find('Thu') > -1:
+#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 8
+#            if str(Days[i]).find('Fri') > -1:
+#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 16
+#            if str(Days[i]).find('Sat') > -1:
+#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 32
+#            if str(Days[i]).find('Sun') > -1:
+#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 64
+
+#	    sttime=datetime.strptime(StartTime[i],'%H:%M')
+#	    drtime=datetime.strptime('0:0','%H:%M') + timedelta(minutes = int(DurationInMinutes[i]))
  
- 	    log.info("Hour " + str(sttime.hour))
- 	    log.info("Min " + str(sttime.minute))
-
-	    values_w[2+(i-1)*4] = int(sttime.hour)*256 + values_w[2+(i-1)*4]
-	    values_w[3+(i-1)*4] = int(drtime.hour)*256+int(sttime.minute)
+# 	    log.info("Hour " + str(sttime.hour))
+# 	    log.info("Min " + str(sttime.minute))
+#
+#	    values_w[2+(i-1)*4] = int(sttime.hour)*256 + values_w[2+(i-1)*4]
+#	    values_w[3+(i-1)*4] = int(drtime.hour)*256+int(sttime.minute)
 	    
-	    values_w[4+(i-1)*4] = int(drtime.second)*256+int(drtime.minute)
+#	    values_w[4+(i-1)*4] = int(drtime.second)*256+int(drtime.minute)
 
             log.info("Hour Manual status:" + str(PowerOn[i]))
 	    if str(PowerOn[i]).find('manualon') > -1:
-		values_w[4+(i-1)*4] = int(drtime.second)*256+int(60)
+		values_w[4+(i-1)*4] = int(0)*256+int(60)
 		log.info("Manual on valve N" + str(i))
             if str(PowerOn[i]).find('manualoff') > -1:
-                values_w[4+(i-1)*4] = int(drtime.second)*256+int(61)
+                values_w[4+(i-1)*4] = int(0)*256+int(61)
 
 
 	    log.info("Reg 1 " + str(values_w[2+(i-1)*4]))
