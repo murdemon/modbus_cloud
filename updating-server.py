@@ -219,6 +219,10 @@ new_data = 0
 data_was_updated = 0
 sending_in_progress = 0
 requestdone = 0
+new_data1 = 0
+data_was_updated1 = 0
+sending_in_progress1 = 0
+requestdone1 = 0
 
 def handleFailure1(f):
          global csvfile
@@ -287,43 +291,43 @@ def print_status1(r):
 def handleFailure(f):
          global csvfile
          global writer
-         global new_data
-         global data_was_updated
-         global sending_in_progress
-	 global requestdone
+         global new_data1
+         global data_was_updated1
+         global sending_in_progress1
+	 global requestdone1
 	 global session 
 
-	 requestdone = 1
-	 sending_in_progress = 0 
+	 requestdone1 = 1
+	 sending_in_progress1 = 0 
 	 log.info("Timeout POST Sensor data to Cloud ")
 #         csvfile = open('/home/pi/setSensorData.csv', 'ab')
-         data_was_updated = 1 
-	 new_data = 0
+         data_was_updated1 = 1 
+	 new_data1 = 0
 	 session.close()
 #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 def print_status(r):
  		global csvfile
     		global writer
-    		global new_data
-		global data_was_updated
-		global sending_in_progress
+    		global new_data1
+		global data_was_updated1
+		global sending_in_progress1
 		global DurationInMinutes
 		global Days
 		global StartTime
 		global PowerOn
-		global requestdone
+		global requestdone1
 		global session
 
-		requestdone = 1
-		sending_in_progress = 0
+		requestdone1 = 1
+		sending_in_progress1 = 0
 		log.info('Status GET Valves: '+str(r.status_code))
                 log.info('Body GET Valves: '+str(r.text))
 
                 if r.status_code == 200:
 #                        csvfile = open('/home/pi/setSensorData.csv', 'wb')
-#                        new_data = 0
-#                        data_was_updated = 1
+                        new_data1 = 0
+                        data_was_updated1 = 1
 #
 # 	                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
                         data = r.json()
@@ -337,13 +341,13 @@ def print_status(r):
 
                 elif r.status_code == 404:
 #                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
-#                        new_data = 0
-#                	data_was_updated = 1
+                        new_data1 = 0
+                	data_was_updated1 = 1
 			b = 1
 		else:
 #                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
-#                        new_data = 0
-#			data_was_updated = 1
+                        new_data1 = 0
+			data_was_updated1 = 1
 #	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 			b = 1
                 session.close()
@@ -384,11 +388,21 @@ def updating_cloud(a):
     global session
     global dt_now_PLC
 
+    global new_data1
+    global data_was_updated1
+    global sending_in_progress1
+    global requestdone1
+
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
-    if new_data == 1 and sending_in_progress == 0:
+
+    new_data = 1    
+    one_send_only = 1    
+
+    if new_data == 1 and sending_in_progress == 0 and  sending_in_progress1 == 0 and requestdone == 0 and requestdone1 == 0:
        csvfile.close()
        sending_in_progress = 1
+       sending_in_progress1 = 1
 	#-----------------------------------------------#
 	# if have ne data make API setSensorData
 	#-----------------------------------------------#
@@ -444,15 +458,15 @@ def updating_cloud(a):
 #                csvfile = open('/home/pi/setSensorData.csv', 'ab')
 #                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
-    if data_was_updated == 1:   
+    if data_was_updated == 1 and data_was_updated1 == 1:   
 	#----------------------------------------------------------------#
 	# Ask command for devices (first getState then if ok resetState)
 	#----------------------------------------------------------------#
-	if requestdone == 1:
+	if requestdone == 1 and requestdone1 == 1:
 	   delay = delay + 1
 
 
-	if delay == 2 and requestdone == 1:
+	if delay == 2 and requestdone == 1 and requestdone1 == 1:
 #	   csvfile.close()
 
 	   context  = a[0]
@@ -533,6 +547,7 @@ def updating_cloud(a):
 
         if delay > 4:
 	   requestdone = 0
+	   requestdone1 = 0
 
            context  = a[0]
            register = 3
@@ -562,13 +577,18 @@ def updating_cloud(a):
 
 	   old_values_zer = [65535]*8192
 	   old_values = old_values_zer
+
 	   new_data = 0
            one_send_only = 0 
            UpdateTime = 1   
 	   delay = 0	   
-
 	   data_was_updated = 0
 
+           new_data1 = 0
+           one_send_only = 0
+           UpdateTime = 1
+           delay = 0
+           data_was_updated1 = 0
 	
 #---------------------------------------------------------------------#
 #Check that dat changed and save to CSV and set command send in Cloud
@@ -695,7 +715,7 @@ def fail(f):
 #---------------------------------------------------------------------------# 
 # run the server you want
 #---------------------------------------------------------------------------# 
-time = 10
+time = 3600
 time_cloud = 10
 
 loop = LoopingCall(f=updating_writer, a=(context,))
