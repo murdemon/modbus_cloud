@@ -258,7 +258,6 @@ def print_status1(r):
 		requestdone = 1
 		sending_in_progress = 0
 		log.info('Status POST CSV file: '+str(r.status_code))
-                log.info('Body POST: '+str(r.text))
 
                 if r.status_code == 200:
                          csvfile = open('/home/pi/setSensorData.csv', 'wb')
@@ -266,20 +265,11 @@ def print_status1(r):
                          data_was_updated = 1
 
  	                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-#                        data = r.json()
-#			for i in [1, 2, 3, 4, 5, 6, 7, 8]:
-#				DurationInMinutes[i] = data[i-1]['mapCodingInfo']['DurationInMinutes']
-#                        	Days[i] = data[i-1]['mapCodingInfo']['Days']
-#                        	StartTime[i] = data[i-1]['mapCodingInfo']['Start Time']
-#                                PowerOn[i] = data[i-1]['mapCodingInfo']['PowerOn']
-				
-#				log.info('Data JSON '+str(Days[i])+' '+str(StartTime[i])+' '+str(DurationInMinutes[i]))
 
                 elif r.status_code == 404:
                         csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data = 0
                 	data_was_updated = 1
-			b = 1
 		else:
                         csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data = 0
@@ -300,11 +290,9 @@ def handleFailure(f):
 	 requestdone1 = 1
 	 sending_in_progress1 = 0 
 	 log.info("Timeout POST Sensor data to Cloud ")
-#         csvfile = open('/home/pi/setSensorData.csv', 'ab')
          data_was_updated1 = 1 
 	 new_data1 = 0
 	 session.close()
-#         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
 def print_status(r):
  		global csvfile
@@ -322,14 +310,10 @@ def print_status(r):
 		requestdone1 = 1
 		sending_in_progress1 = 0
 		log.info('Status GET Valves: '+str(r.status_code))
-                log.info('Body GET Valves: '+str(r.text))
 
                 if r.status_code == 200:
-#                        csvfile = open('/home/pi/setSensorData.csv', 'wb')
                         new_data1 = 0
                         data_was_updated1 = 1
-#
-# 	                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
                         data = r.json()
 			for i in [1, 2, 3, 4, 5, 6, 7, 8]:
 				DurationInMinutes[i] = data[i-1]['mapCodingInfo']['DurationInMinutes']
@@ -340,16 +324,11 @@ def print_status(r):
 				log.info('Data JSON '+str(Days[i])+' '+str(StartTime[i])+' '+str(DurationInMinutes[i]))
 
                 elif r.status_code == 404:
-#                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data1 = 0
                 	data_was_updated1 = 1
-			b = 1
 		else:
-#                        csvfile = open('/home/pi/setSensorData.csv', 'ab')
                         new_data1 = 0
 			data_was_updated1 = 1
-#	        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-			b = 1
                 session.close()
 
 def setBit(int_type, offset):
@@ -396,78 +375,82 @@ def updating_cloud(a):
     log.info("new data: "+str(new_data))
     log.info("sending_in_progress: "+str(sending_in_progress))
 
-    new_data = 1    
-    one_send_only = 1    
-
-    if new_data == 1 and sending_in_progress == 0 and  sending_in_progress1 == 0 and requestdone == 0 and requestdone1 == 0:
+    if new_data == 1 and sending_in_progress == 0 and requestdone == 0:
        csvfile.close()
        sending_in_progress = 1
-       sending_in_progress1 = 1
-	#-----------------------------------------------#
-	# if have ne data make API setSensorData
-	#-----------------------------------------------#
        log.info('Upload data to Cloud')
        multiple_files = [('text', ('setSensorData.csv', open('/home/pi/setSensorData.csv', 'rb'), 'text/plain'))]
        r1 = session.post(post_url, files=multiple_files, timeout=60, stream=True)
        r1.addCallback(print_status1)
        r1.addErrback(handleFailure1)
 
+    if data_was_updated == 1:
+        #----------------------------------------------------------------#
+        # Ask command for devices (first getState then if ok resetState)
+        #----------------------------------------------------------------#
+     	log.info('Data was updatet')
+	if requestdone == 1:
+          delay = delay + 1
+
+
+          if delay > 4:
+           requestdone = 0
+
+           context  = a[0]
+           register = 3
+           slave_id = 0x00
+           address  = 0x0
+
+           values_zer = [65535]*100
+           context[slave_id].setValues(register, address, values_zer)
+           log.info("Clear all input registers")
+
+
+           context  = a[0]
+           register = 3
+           slave_id = 0x00
+           address  = 0x1000
+
+           values_zer = [65535]*2
+           context[slave_id].setValues(register, address, values_zer)
+           log.info("Clear all output registers")
+
+           Year = 0
+           Month = 0
+           Day = 0
+           Hour = -1
+           Min = -1
+           Sec = -1
+
+           old_values_zer = [65535]*8192
+           old_values = old_values_zer
+
+           new_data = 0
+           one_send_only = 0
+           UpdateTime = 1
+           delay = 0
+           data_was_updated = 0
+
+        
+
+    if sending_in_progress1 == 0 and requestdone1 == 0:
+
+       sending_in_progress1 = 1
+	#-----------------------------------------------#
+	# if have ne data make API setSensorData
+	#-----------------------------------------------#
+       log.info('Get data from Cloud')
+       
        r = session.get(valve_url, timeout=(3, 500), stream=False)
        r.addCallback(print_status)
        r.addErrback(handleFailure)
+   
 
-#       upload_file =  open('/home/pi/setSensorData.csv', 'r')
-#
-#       try:	
-#	ftp = FTP()
-#	log.info('Server:' + str(SERVER))
-#	log.info('Port:' + str(PORT))
-
-#    	ftp.connect(SERVER, PORT, timeout=5)
-#    	ftp.login(USER, PASS) 
-#	upload_file =  open('/home/pi/setSensorData.csv', 'r')
-#	userrecordid = config.get('post_conf','ftp_userrecordid')
-#        orgnum = config.get('Sensor_1','Organization Number')
-#        final_file_name = '/weather/'+str(int(Year)).zfill(4)+str(int(Month)).zfill(2)+str(int(Day)).zfill(2)+'-'+str(int(Hour)).zfill(2)+str(int(Min)).zfill(2)+'-1-'+orgnum+'-'+userrecordid+'.csv'
-#	log.info('File name:' + str(final_file_name))
-#	result = ftp.storbinary('STOR '+ final_file_name, upload_file, )
-#        ftp.quit()
-#        log.info('Result =' + str(result))				
-#        sending_in_progress = 0
-
-#	if result[0:3] == '226':
-#		upload_file.close()
-#		log.info('Uploading good')
-#                csvfile = open('/home/pi/setSensorData.csv', 'wb')
-#                new_data = 0
-#                data_was_updated = 1
-#                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-# 	else:
-#		upload_file.close()		
-#		log.info('Uploading bed')
-#                new_data = 0
-#                data_was_updated = 1
-#                csvfile = open('/home/pi/setSensorData.csv', 'ab')
-#                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-
-#       except:
-#		upload_file.close()
-#                log.info('Uploading bed')
-#                new_data = 0
-#                data_was_updated = 1
-#                csvfile = open('/home/pi/setSensorData.csv', 'ab')
-#                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-
-    if data_was_updated == 1 and data_was_updated1 == 1:   
+    if data_was_updated1 == 1:   
 	#----------------------------------------------------------------#
 	# Ask command for devices (first getState then if ok resetState)
 	#----------------------------------------------------------------#
-	if requestdone == 1 and requestdone1 == 1:
-	   delay = delay + 1
-
-
-	if delay == 2 and requestdone == 1 and requestdone1 == 1:
-#	   csvfile.close()
+	if requestdone1 == 1:
 
 	   context  = a[0]
 	   register = 3
@@ -483,111 +466,40 @@ def updating_cloud(a):
 	   for i in [1, 2, 3, 4, 5, 6, 7, 8]:
 
 	    values_w[2+(i-1)*4] = 0
+            values_w[3+(i-1)*4] = 0
+
 	    AllDays = Days[i].split(",")
 	    AllStartTime = StartTime[i].split(",")
 	    AllDurations = DurationInMinutes[i].split(",")
 
 	    for j in range(len(AllDays)):
-		log.info("Vavel " + str(i) + " Day to work "+ AllDays[j])
+#		log.info("Vavel " + str(i) + " Day to work "+ AllDays[j])
 	    	TimeFrom = datetime.strptime(AllStartTime[j],"%H:%M")
-		log.info("Vavel " + str(i) + " Time from "+ datetime.strftime(TimeFrom,"%H:%M"))
+#		log.info("Vavel " + str(i) + " Time from "+ datetime.strftime(TimeFrom,"%H:%M"))
 		TimeTo = TimeFrom + timedelta(minutes=int(AllDurations[j]))
-                log.info("Vavel " + str(i) + " Time to "+ datetime.strftime(TimeTo,"%H:%M"))
-		log.info("Day now " + dt_now_PLC.strftime("%a"))
+#                log.info("Vavel " + str(i) + " Time to "+ datetime.strftime(TimeTo,"%H:%M"))
+#		log.info("Day now " + dt_now_PLC.strftime("%a"))
 
 		TimeNow = datetime.strptime(dt_now_PLC.strftime("%H:%M"),"%H:%M")
-		log.info("Time now " + TimeNow.strftime("%H:%M"))
+#		log.info("Time now " + TimeNow.strftime("%H:%M"))
 
 		if dt_now_PLC.strftime("%a").find(AllDays[j]) > -1 and TimeNow > TimeFrom and TimeNow < TimeTo:
 			values_w[4+(i-1)*4] = int(0)*256+int(60)
                 	log.info("Shudler on valve N" + str(i))
 		else:
 			values_w[4+(i-1)*4] = int(0)*256+int(0)
-#            if str(Days[i]).find('Mon') > -1:
-# 		values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 1
-#            if str(Days[i]).find('Tue') > -1:
-#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 2
-#            if str(Days[i]).find('Wed') > -1:
-#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 4
-#            if str(Days[i]).find('Thu') > -1:
-#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 8
-#            if str(Days[i]).find('Fri') > -1:
-#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 16
-#            if str(Days[i]).find('Sat') > -1:
-#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 32
-#            if str(Days[i]).find('Sun') > -1:
-#                 values_w[2+(i-1)*4] = values_w[2+(i-1)*4] + 64
 
-#	    sttime=datetime.strptime(StartTime[i],'%H:%M')
-#	    drtime=datetime.strptime('0:0','%H:%M') + timedelta(minutes = int(DurationInMinutes[i]))
- 
-# 	    log.info("Hour " + str(sttime.hour))
-# 	    log.info("Min " + str(sttime.minute))
-#
-#	    values_w[2+(i-1)*4] = int(sttime.hour)*256 + values_w[2+(i-1)*4]
-#	    values_w[3+(i-1)*4] = int(drtime.hour)*256+int(sttime.minute)
-	    
-#	    values_w[4+(i-1)*4] = int(drtime.second)*256+int(drtime.minute)
 
             log.info("Hour Manual status:" + str(PowerOn[i]))
 	    if str(PowerOn[i]).find('manualon') > -1:
 		values_w[4+(i-1)*4] = int(0)*256+int(60)
-		log.info("Manual on valve N" + str(i))
+#		log.info("Manual on valve N" + str(i))
             if str(PowerOn[i]).find('manualoff') > -1:
                 values_w[4+(i-1)*4] = int(0)*256+int(61)
 
-
-	    log.info("Reg 1 " + str(values_w[2+(i-1)*4]))
-
-            log.info("Reg 2 " + str(values_w[3+(i-1)*4]))
- 
-            log.info("Reg 3 " + str(values_w[4+(i-1)*4]))
-            log.info("Set 1 reg to one")
 	   context[slave_id].setValues(register, address, values_w)
 
-        if delay > 4:
-	   requestdone = 0
 	   requestdone1 = 0
-
-           context  = a[0]
-           register = 3
-           slave_id = 0x00
-           address  = 0x0
-#           values_w   = context[slave_id].getValues(register, address, count = 100)
-           values_zer = [65535]*100
-	   context[slave_id].setValues(register, address, values_zer)
-	   log.info("Clear all input registers")	  
-
-
-           context  = a[0]
-           register = 3
-           slave_id = 0x00
-           address  = 0x1000
-#           values_w   = context[slave_id].getValues(register, address, count = 100)
-           values_zer = [65535]*2
-           context[slave_id].setValues(register, address, values_zer)
-           log.info("Clear all output registers")
-
-	   Year = 0
-	   Month = 0
-	   Day = 0
-	   Hour = -1
-	   Min = -1
-	   Sec = -1
-
-	   old_values_zer = [65535]*8192
-	   old_values = old_values_zer
-
-	   new_data = 0
-           one_send_only = 0 
-           UpdateTime = 1   
-	   delay = 0	   
-	   data_was_updated = 0
-
-           new_data1 = 0
-           one_send_only = 0
-           UpdateTime = 1
-           delay = 0
            data_was_updated1 = 0
 	
 #---------------------------------------------------------------------#
