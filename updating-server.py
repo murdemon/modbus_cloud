@@ -38,12 +38,23 @@ import signal
 import struct
 import pickle
 
+frame_PLC = ""
+Sens_1_takt = 0
 
 def xbee_data(frames):
 	global one_send_only
 	global new_data
+        global frame_PLC
+	global Sens_1_takt
 	print frames
-	if len(frames['data']) == 32:
+
+	addr = frames['source_addr']
+
+	if addr ==  "0013a2004124f8d4":
+		print "Get Data from XBee PLC"
+		frame_PLC = frames['data'].decode("hex")
+
+	if len(frames['data']) == 32 and  addr ==  "0013a200415af76c":
 
 #		print frames['data']
 		sensor = frames['source_addr']
@@ -59,23 +70,26 @@ def xbee_data(frames):
 			log.info("Soil Moisture: " 	+ str(value2))
 			log.info("Air Temperature: " 	+ str(value3))
 			log.info("Air Humidity: "  + str(value4))
-		
-	
-#			serial_port_electron.write(str(sensor) + "_1,1800,"+ str('%.2f' % value1)+"\r");
-#			serial_port_electron.flushOutput()
-#			sleep(10)
-#			serial_port_electron.write(str(sensor) + "_2,1800,"+ str('%.2f' % value2)+"\r");
-#			serial_port_electron.flushOutput()
-#			sleep(10)
-#			serial_port_electron.write(str(sensor) + "_3,1800,"+ str('%.2f' % value3)+"\r");
-#			serial_port_electron.flushOutput()
-#			sleep(10)
-#			serial_port_electron.write(str(sensor) + "_4,1800,"+ str('%.2f' % value4)+"\r");
-#			serial_port_electron.flushOutput()
-#			sleep(10)
+			
+			Sens_1_takt = Sens_1_takt + 1
+			
+			if Sens_1_takt > 4:
+				Sens_1_takt = 0
+				serial_port_electron.write(str(sensor) + "_1,1800,"+ str('%.2f' % value1)+"\r");
+				serial_port_electron.flushOutput()
+				sleep(10)
+				serial_port_electron.write(str(sensor) + "_2,1800,"+ str('%.2f' % value2)+"\r");
+				serial_port_electron.flushOutput()
+				sleep(10)
+				serial_port_electron.write(str(sensor) + "_3,1800,"+ str('%.2f' % value3)+"\r");
+				serial_port_electron.flushOutput()
+				sleep(10)
+				serial_port_electron.write(str(sensor) + "_4,1800,"+ str('%.2f' % value4)+"\r");
+				serial_port_electron.flushOutput()
+				sleep(10)
 
 def electron_read(a):
-	  log.info("Electron read")
+#	  log.info("Electron read")
 	  data = serial_port_electron.readline()
 	  print data
 	  if data <> "":
@@ -175,16 +189,13 @@ except Exception:
 xbee = DigiMesh(serial_port,  callback=xbee_data)
 
 SerPipe = Protocol()
+SerPipe_PLC = Protocol()
 
 #Set MASTER name on master station
-xbee.send('at', id='\x08', frame_id='\x00',  command='NI', parameter='MASTER')
-xbee.send('at', id='\x09', frame_id='\x00',  command='AO', parameter='\x00')
-xbee.send('at', id='\x08', frame_id='\x00',  command='NI', parameter='MASTER')
-xbee.send('at', id='\x09', frame_id='\x00',  command='AO', parameter='\x00')
-xbee.send('at', id='\x08', frame_id='\x00',  command='NI', parameter='MASTER')
-xbee.send('at', id='\x09', frame_id='\x00',  command='AO', parameter='\x00')
-xbee.send('at', id='\x08', frame_id='\x00',  command='NI', parameter='MASTER')
-xbee.send('at', id='\x09', frame_id='\x00',  command='AO', parameter='\x00')
+xbee.send('at', id='\x08', frame_id='\x01',  command='NI', parameter='MASTER')
+xbee.send('at', id='\x09', frame_id='\x02',  command='AO', parameter='\x00')
+
+#xbee.send('tx', id='\x10', frame_id='\x03',  dest_addr='\x00\x13\xa2\x00\x41\x24\xf8\xd4', reserved = '\xFF\xFE' , broadcast_radius = '\x00', options = '\x00', data = '02*00*')
 
 reactor.suggestThreadPoolSize(10)
 
@@ -319,8 +330,9 @@ def updating_cloud(a):
 #---------------------------------------------------------------------#
 def check_val_change(old_1, new_1,sensor_num):
 	global new_data
-
-    	if old_1 <> new_1:
+	print "Check val:"+str(old_1) + "," + str(new_1)
+#    	if old_1 <> new_1:
+	if 1 == 1:
 	        newval = new_1
 	        log.info("We get new sensor "+str(sensor_num)+" data: " + str('%.2f' % newval))
 		serial_port_electron.write("1_"+str(sensor_num) + ",1800,"+ str('%.2f' % newval)+"\r");
@@ -356,92 +368,126 @@ def updating_writer(a):
    global UpdateTime
    global ix
    global answer_was
+   global Get_sample
     
    if answer_was == 1:
-    answer_was = 0
+#    answer_was = 0
 #    log.info("Send data to PLC step:" + str(ix))
-    print(".")
+#    print(".")
     if ix == 0:
-	    serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,0))
-	    serial_PLC.flush()
+	    xbee.send('tx', id='\x10', frame_id='\x03',  dest_addr='\x00\x13\xa2\x00\x41\x24\xf8\xd4', reserved = '\xFF\xFE' , broadcast_radius = '\x00', options = '\x00', data = '02*00*')
+	    if Get_sample == 1:
+		    serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,0))
+		    serial_PLC.flush()
+		    answer_was = 0
 	    ix = 1
     elif ix == 1:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,1))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,1))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 2
     elif ix == 2:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,2))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,2))
+                    answer_was = 0
+ 	            serial_PLC.flush()
             ix = 3
     elif ix == 3:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,3))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,3))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 4    
     elif ix == 4:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,4))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,4))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 5
     elif ix == 5:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,5))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,5))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 6
     elif ix == 6:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,6))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,6))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 7
     elif ix == 7:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,7))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,7))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 8
     elif ix == 8:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,10))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,10))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 9
     elif ix == 9:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,11))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,11))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 10
     elif ix == 10:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,12))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,12))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 11
     elif ix == 11:
-            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,13))
-            serial_PLC.flush()
+            if Get_sample == 1:
+	            serial_PLC.write(SerPipe.Get_Subsystem_Setpoint(0,13))
+	            serial_PLC.flush()
+                    answer_was = 0
             ix = 12
     elif ix == 12:
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,21,Y[1]))
-            serial_PLC.flush()
+            serial_PLC.flush() 
+            answer_was = 0
             ix = 13
     elif ix == 13:
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,22,Y[2]))
             serial_PLC.flush()
+            answer_was = 0
             ix = 14
     elif ix == 14:
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,23,Y[3]))
             serial_PLC.flush()
+            answer_was = 0
             ix = 15
     elif ix == 15:
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,24,Y[4]))
             serial_PLC.flush()
+            answer_was = 0
             ix = 16
     elif ix == 16:
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,25,Y[5]))
             serial_PLC.flush()
+            answer_was = 0
             ix = 17
     elif ix == 17:
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,26,Y[6]))
             serial_PLC.flush()
+            answer_was = 0
             ix = 18
     elif ix == 18:
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,27,Y[7]))
             serial_PLC.flush()
+            answer_was = 0
             ix = 19
     elif ix == 19:
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,28,Y[8]))
             serial_PLC.flush()
+            answer_was = 0
             ix = 0
-
+#    Get_sample = 0
 def fail(f):
     log.info("we got an exception: %s" % (f.getTraceback(),))
 
@@ -458,9 +504,10 @@ new = [0]*200
 def loop_30min(a):
  global new
  global old
+ print "Check vals.............."
  for i in [0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13]:
     check_val_change(old[i],new[i],i+1)
- old = new
+# old = new
 
 
 iter = 0
@@ -468,8 +515,14 @@ def loop_data_PLC(a):
     global new
     global answer_was
     global iter
+    global frame_PLC
     frame = serial_PLC.readline()
     frame_data = SerPipe.frame_reader(frame)
+
+    if 1==1:
+	print "Parse PLC frame" + frame_PLC
+	frame_data_PLC = SerPipe_PLC.frame_reader(frame_PLC)
+        frame_PLC = "";
 
     iter = iter + 1
 
@@ -480,26 +533,38 @@ def loop_data_PLC(a):
     if frame_data[0] == "03":
 	 answer_was = 1
 	 if frame_data[1] == "00":
+	  print "Get data from PLC:" + str(frame_data[3])
+	  print "Sensor num:" + str(frame_data[2])
 	  new[int(frame_data[2])] = float(frame_data[3])
-    
 
+Get_sample = 1
+def SampleTime(a):
+    global Get_sample    
+    Get_sample = 1
 
-def customHandler(signum, stackframe):
+def customHandler():
         log.info("Bye")
+	reactor.sigTerm()
 	xbee.halt()
 	serial_PLC.close()
 	serial_port.close()
 	serial_port_electron.close()
-	reactor.callFromThread(reactor.stop)	
+	reactor.removeAll()
+	reactor.stop	
 
-signal.signal(signal.SIGINT, customHandler)
+#signal.signal(signal.SIGINT, customHandler)
+#signal.signal(signal.SIGTERM, customHandler)
 
+print("Starting.... service")
 loop1 = LoopingCall(f=loop_30min, a=(context,))
 loop1.start(1800, now=False).addErrback(fail) # initially delay by time
 
+loop_s = LoopingCall(f=SampleTime, a=(context,))
+loop_s.start(180, now=False).addErrback(fail) # initially delay by time
+
 
 loop2 = LoopingCall(f=updating_writer, a=(context,))
-loop2.start(1, now=False).addErrback(fail) # initially delay by time
+loop2.start(0.1, now=False).addErrback(fail) # initially delay by time
 
 loop3 = LoopingCall(f=loop_data_PLC, a=(context,))
 loop3.start(1, now=False).addErrback(fail) # initially delay by time
@@ -510,9 +575,5 @@ loop_Electron_read.start(1, now=False).addErrback(fail) # initially delay by tim
 loop_cloud = LoopingCall(f=updating_cloud, a=(context,))
 loop_cloud.start(1, now=False).addErrback(fail) # initially delay by time
 
-
+reactor.addSystemEventTrigger('before', 'shutdown', customHandler)
 reactor.run()
-
-
-
-
