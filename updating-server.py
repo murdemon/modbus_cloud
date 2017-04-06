@@ -41,11 +41,49 @@ import pickle
 frame_PLC = ""
 Sens_1_takt = 0
 
+st1_soil_temp = 0
+st1_soil_moist = 0
+st1_air_temp = 0
+st1_air_humid = 0
+
+st2_soil_temp = 0
+st2_soil_moist = 0
+st2_air_temp = 0
+st2_air_humid = 0
+
+st3_soil_temp = 0
+st3_soil_moist = 0
+st3_air_temp = 0
+st3_air_humid = 0
+
+st4_soil_temp = 0
+st4_soil_moist = 0
+st4_air_temp = 0
+st4_air_humid = 0
+
 def xbee_data(frames):
 	global one_send_only
 	global new_data
         global frame_PLC
 	global Sens_1_takt
+	global st1_soil_temp
+	global st1_soil_moist
+	global st1_air_temp
+	global st1_air_humid
+        global st2_soil_temp
+        global st2_soil_moist
+        global st2_air_temp
+        global st2_air_humid
+        global st3_soil_temp
+        global st3_soil_moist
+        global st3_air_temp
+        global st3_air_humid
+        global st4_soil_temp
+        global st4_soil_moist
+        global st4_air_temp
+        global st4_air_humid
+
+
 	print frames
 
 	addr = frames['source_addr']
@@ -54,39 +92,50 @@ def xbee_data(frames):
 		print "Get Data from XBee PLC"
 		frame_PLC = frames['data'].decode("hex")
 
-	if len(frames['data']) == 32 and  addr ==  "0013a200415af76c":
+        if len(frames['data']) == 32 and  addr ==  "0013a200415b7ea4":
+                print "Get Data from Sensor station 2"
 
-#		print frames['data']
-		sensor = frames['source_addr']
-		value1 = struct.unpack('!f', frames['data'][0:8].decode('hex'))[0]
-		value2 = struct.unpack('!f', frames['data'][8:16].decode('hex'))[0]
-		value3 = struct.unpack('!f', frames['data'][16:24].decode('hex'))[0]
-		value4 = struct.unpack('!f', frames['data'][24:32].decode('hex'))[0]
-		
-#		if sensor == "0013a20041461027":
-		if 1 == 1:
-			log.info("We get data from sensor station: "+ sensor)
-			log.info("Soil Temperature: " + str(value1))
-			log.info("Soil Moisture: " 	+ str(value2))
-			log.info("Air Temperature: " 	+ str(value3))
-			log.info("Air Humidity: "  + str(value4))
-			
-			Sens_1_takt = Sens_1_takt + 1
-			
-			if Sens_1_takt > 4:
-				Sens_1_takt = 0
-				serial_port_electron.write(str(sensor) + "_1,1800,"+ str('%.2f' % value1)+"\r");
-				serial_port_electron.flushOutput()
-				sleep(10)
-				serial_port_electron.write(str(sensor) + "_2,1800,"+ str('%.2f' % value2)+"\r");
-				serial_port_electron.flushOutput()
-				sleep(10)
-				serial_port_electron.write(str(sensor) + "_3,1800,"+ str('%.2f' % value3)+"\r");
-				serial_port_electron.flushOutput()
-				sleep(10)
-				serial_port_electron.write(str(sensor) + "_4,1800,"+ str('%.2f' % value4)+"\r");
-				serial_port_electron.flushOutput()
-				sleep(10)
+                sensor = frames['source_addr']
+                st2_soil_temp = struct.unpack('!f', frames['data'][0:8].decode('hex'))[0]
+                st2_soil_moist = struct.unpack('!f', frames['data'][8:16].decode('hex'))[0]
+                st2_air_temp = struct.unpack('!f', frames['data'][16:24].decode('hex'))[0]*1.8 + 32
+                st2_air_humid = struct.unpack('!f', frames['data'][24:32].decode('hex'))[0]
+
+                print "We get data from sensor station: "+ sensor
+                print "Soil Temperature: " + str(st2_soil_temp)
+                print "Soil Moisture: "      + str(st2_soil_moist)
+                print "Air Temperature: "    + str(st2_air_temp)
+                log.info("Air Humidity: "  + str(st2_air_humid))			
+
+        if len(frames['data']) == 32 and  addr ==  "0013a2004154d773":
+                print "Get Data from Sensor station 1"
+
+                sensor = frames['source_addr']
+                st1_soil_temp = struct.unpack('!f', frames['data'][0:8].decode('hex'))[0]
+                st1_soil_moist = struct.unpack('!f', frames['data'][8:16].decode('hex'))[0]
+                st1_air_temp = struct.unpack('!f', frames['data'][16:24].decode('hex'))[0]*1.8 + 32
+                st1_air_humid = struct.unpack('!f', frames['data'][24:32].decode('hex'))[0]
+
+                print "We get data from sensor station: "+ sensor
+                print "Soil Temperature: " + str(st1_soil_temp)
+                print "Soil Moisture: "      + str(st1_soil_moist)
+                print "Air Temperature: "    + str(st1_air_temp)
+                print "Air Humidity: "  + str(st1_air_humid)
+
+        if len(frames['data']) == 32 and  addr ==  "0013a20040e3abca":
+                print "Get Data from Sensor station 3"
+
+                sensor = frames['source_addr']
+                st3_soil_temp = struct.unpack('!f', frames['data'][0:8].decode('hex'))[0]
+                st3_soil_moist = struct.unpack('!f', frames['data'][8:16].decode('hex'))[0]
+                st3_air_temp = struct.unpack('!f', frames['data'][16:24].decode('hex'))[0]*1.8 + 32
+                st3_air_humid = struct.unpack('!f', frames['data'][24:32].decode('hex'))[0]
+
+                print "We get data from sensor station: "+ sensor
+                print "Soil Temperature: " + str(st3_soil_temp)
+                print "Soil Moisture: "      + str(st3_soil_moist)
+                print "Air Temperature: "    + str(st3_air_temp)
+                print "Air Humidity: "  + str(st3_air_humid)
 
 def electron_read(a):
 #	  log.info("Electron read")
@@ -167,14 +216,14 @@ def electron_read(a):
 		
 
 try:
-	serial_PLC = serial.Serial('/dev/ttyUSB0', 9600, timeout=0.1)
+	serial_PLC = serial.Serial('/dev/ttyUSB1', 9600, timeout=0.1)
 except Exception:
         print ("PLC not connected")
 	serial_PLC = serial.Serial('/dev/tty22', 9600, timeout=0.1)
 
 
 try:
-	serial_port = serial.Serial('/dev/ttyUSB1', 9600, timeout=0.1)
+	serial_port = serial.Serial('/dev/ttyUSB0', 115200, timeout=0.1)
 except Exception:
         print ("Xbee not connected")
 	serial_port = serial.Serial('/dev/tty21', 9600)
@@ -192,10 +241,17 @@ SerPipe = Protocol()
 SerPipe_PLC = Protocol()
 
 #Set MASTER name on master station
-xbee.send('at', id='\x08', frame_id='\x01',  command='NI', parameter='MASTER')
-xbee.send('at', id='\x09', frame_id='\x02',  command='AO', parameter='\x00')
-
+#xbee.send('at', id='\x08', frame_id='\x01',  command='NI', parameter='MASTER')
+#xbee.send('at', id='\x09', frame_id='\x02',  command='AO', parameter='\x00')
 #xbee.send('tx', id='\x10', frame_id='\x03',  dest_addr='\x00\x13\xa2\x00\x41\x24\xf8\xd4', reserved = '\xFF\xFE' , broadcast_radius = '\x00', options = '\x00', data = '02*00*')
+print "Startting..."
+xbee.send('at', id='\x08', frame_id='\x01',  command='NI', parameter='MASTER')
+xbee.send('at', id='\x08', frame_id='\x02',  command='AO', parameter='\x00')
+xbee.send('at', id='\x08', frame_id='\x03',  command='ID', parameter='\x1F\xF7')
+xbee.send('at', id='\x08', frame_id='\x04',  command='SH', parameter='')
+xbee.send('at', id='\x08', frame_id='\x05',  command='SL', parameter='')
+xbee.send('at', id='\x08', frame_id='\x06',  command='ID', parameter='')
+xbee.send('at', id='\x08', frame_id='\x07',  command='SM', parameter='')
 
 reactor.suggestThreadPoolSize(10)
 
@@ -246,7 +302,7 @@ from datetime import timedelta
 import time as _time
 
 dt_now_PLC =  datetime.now()
-
+#dt_now_PLC =  ""
 
 #---------------------------------------------------------------------------# 
 # define your callback process
@@ -486,6 +542,16 @@ def updating_writer(a):
             serial_PLC.write(SerPipe.Set_Subsystem_Setpoint(0,28,Y[8]))
             serial_PLC.flush()
             answer_was = 0
+            ix = 20
+    elif ix == 20:
+            serial_PLC.write(SerPipe.Get_RTC())
+            serial_PLC.flush()
+            answer_was = 0
+            ix = 21
+    elif ix == 21:
+            serial_PLC.write(SerPipe.Get_System_Status())
+            serial_PLC.flush()
+            answer_was = 0
             ix = 0
 #    Get_sample = 0
 def fail(f):
@@ -504,31 +570,110 @@ new = [0]*200
 def loop_30min(a):
  global new
  global old
+ global st1_soil_temp
+ global st1_soil_moist
+ global st1_air_temp
+ global st1_air_humid
+
  print "Check vals.............."
  for i in [0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13]:
     check_val_change(old[i],new[i],i+1)
-# old = new
 
+ sensor = "0013a20040e3abd5"
+ serial_port_electron.write(str(sensor) + "_1,1800,"+ str('%.2f' % st2_soil_temp)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_2,1800,"+ str('%.2f' % st2_soil_moist)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_3,1800,"+ str('%.2f' % st2_air_temp)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_4,1800,"+ str('%.2f' % st2_air_humid)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+
+ sensor = "0013a20040e3abca"
+ serial_port_electron.write(str(sensor) + "_1,1800,"+ str('%.2f' % st1_soil_temp)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_2,1800,"+ str('%.2f' % st1_soil_moist)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_3,1800,"+ str('%.2f' % st1_air_temp)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_4,1800,"+ str('%.2f' % st1_air_humid)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+
+ sensor = "0013a20040e3abea"
+ serial_port_electron.write(str(sensor) + "_1,1800,"+ str('%.2f' % st1_soil_temp)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_2,1800,"+ str('%.2f' % st1_soil_moist)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_3,1800,"+ str('%.2f' % st1_air_temp)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ serial_port_electron.write(str(sensor) + "_4,1800,"+ str('%.2f' % st1_air_humid)+"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
+ 
+ sensor = "MasterStatus"
+ serial_port_electron.write(str(sensor) + ErrorStatus +"\r");
+ serial_port_electron.flushOutput()
+ sleep(10)
 
 iter = 0
+ErrorStatus = "00000000000000000000000000000000"
 def loop_data_PLC(a):
     global new
+    global ErrorStatus
     global answer_was
     global iter
-    global frame_PLC
+    global frame_PLC 
+    global dt_now_PLC
     frame = serial_PLC.readline()
     frame_data = SerPipe.frame_reader(frame)
 
-    if 1==1:
-	print "Parse PLC frame" + frame_PLC
-	frame_data_PLC = SerPipe_PLC.frame_reader(frame_PLC)
-        frame_PLC = "";
+#    if 1==1:
+#	print "Parse PLC frame" + frame
+#	frame_data_PLC = SerPipe_PLC.frame_reader(frame)
+#        frame_PLC = "";
 
     iter = iter + 1
 
     if iter > 5 and answer_was == 0:
 	    answer_was = 1
 	    iter = 0
+
+    if frame_data[0] == "10":
+         answer_was = 1
+	 print frame_data
+	 if frame_data[1] == "00" and frame_data[2] == "00" and frame_data[3] == "00":
+		print "No error"
+		ErrorStatus = "00000000000000000000000000000000"
+	 if frame_data[1] == "07" and frame_data[2] == "00" and frame_data[3] == "00":
+		print "Error 1"
+		new = list(ErrorStatus)
+		new[31] = '1'
+		ErrorStatus = ''.join(new)
+		print ErrorStatus
+		
+    if frame_data[0] == "11":
+	 print frame_data
+         answer_was = 1
+         Year = frame_data[1]
+	 Month = frame_data[2]
+	 Day = frame_data[3]
+	 Hour = frame_data[4]
+	 Min = frame_data[5]
+	 Sec = frame_data[6]
+         new_datetime = (int(Year), int(Month), int(Day), int(Hour), int(Min), int(Sec),int(0))
+	 dt_now_PLC = datetime( *new_datetime[:6])
+	 print dt_now_PLC
 
     if frame_data[0] == "03":
 	 answer_was = 1
@@ -556,6 +701,10 @@ def customHandler():
 #signal.signal(signal.SIGTERM, customHandler)
 
 print("Starting.... service")
+
+serial_port_electron.write("Electron starting\r");
+serial_port_electron.flushOutput()
+
 loop1 = LoopingCall(f=loop_30min, a=(context,))
 loop1.start(1800, now=False).addErrback(fail) # initially delay by time
 
