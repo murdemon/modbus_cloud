@@ -622,7 +622,7 @@ def loop_30min(a):
  sleep(10)
  
  sensor = "MasterStatus"
- serial_port_electron.write(str(sensor) + ErrorStatus +"\r");
+ serial_port_electron.write(str(sensor) + "," + ErrorStatus +"\r");
  serial_port_electron.flushOutput()
  sleep(10)
 
