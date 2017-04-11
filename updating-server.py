@@ -122,7 +122,7 @@ def xbee_data(frames):
                 print "Air Temperature: "    + str(st1_air_temp)
                 print "Air Humidity: "  + str(st1_air_humid)
 
-        if len(frames['data']) == 32 and  addr ==  "0013a20040e3abca":
+        if len(frames['data']) == 32 and  addr ==  "0013a200415b7e9c":
                 print "Get Data from Sensor station 3"
 
                 sensor = frames['source_addr']
@@ -195,6 +195,11 @@ def electron_read(a):
                         StartTime[8] = cloud_data[3]
                         PowerOn[8] = cloud_data[1]
                         print cloud_data
+
+                if RecordID == "1177247":
+                        Mode_from_Cloud = cloud_data[1]
+                        print Mode_from_Cloud
+
              except Exception:
                 log.info("Bed data in")
 
@@ -552,6 +557,11 @@ def updating_writer(a):
             serial_PLC.write(SerPipe.Get_System_Status())
             serial_PLC.flush()
             answer_was = 0
+            ix = 22
+    elif ix == 22:
+            serial_PLC.write(SerPipe.Get_Subsystem_Mode(0))
+            serial_PLC.flush()
+            answer_was = 0
             ix = 0
 #    Get_sample = 0
 def fail(f):
@@ -622,19 +632,28 @@ def loop_30min(a):
  sleep(10)
  
  sensor = "MasterStatus"
- serial_port_electron.write(str(sensor) + "," + ErrorStatus +"\r");
+ serial_port_electron.write(str(sensor) + ",1800,"+ ErrorStatus +"\r");
  serial_port_electron.flushOutput()
  sleep(10)
 
+
+
 iter = 0
 ErrorStatus = "00000000000000000000000000000000"
+was_ErrorStatus = "00000000000000000000000000000000"
+Mode = "00";
+was_Mode = "00";
+
 def loop_data_PLC(a):
     global new
     global ErrorStatus
+    global was_ErrorStatus
     global answer_was
     global iter
     global frame_PLC 
     global dt_now_PLC
+    global Mode
+    global was_Mode
     frame = serial_PLC.readline()
     frame_data = SerPipe.frame_reader(frame)
 
@@ -650,17 +669,57 @@ def loop_data_PLC(a):
 	    iter = 0
 
     if frame_data[0] == "10":
+	 was_ErrorStatus =  ErrorStatus
          answer_was = 1
 	 print frame_data
 	 if frame_data[1] == "00" and frame_data[2] == "00" and frame_data[3] == "00":
 		print "No error"
 		ErrorStatus = "00000000000000000000000000000000"
-	 if frame_data[1] == "07" and frame_data[2] == "00" and frame_data[3] == "00":
+	 if frame_data[1] == "01":
 		print "Error 1"
 		new = list(ErrorStatus)
 		new[31] = '1'
 		ErrorStatus = ''.join(new)
 		print ErrorStatus
+
+         if frame_data[1] == "02":
+                print "Error 2"
+                new = list(ErrorStatus)
+                new[30] = '1'
+                ErrorStatus = ''.join(new)
+                print ErrorStatus
+
+         if frame_data[1] == "03":
+                print "Error 3"
+                new = list(ErrorStatus)
+                new[29] = '1'
+                ErrorStatus = ''.join(new)
+                print ErrorStatus
+
+         if frame_data[1] == "04":
+                print "Error 4"
+                new = list(ErrorStatus)
+                new[28] = '1'
+                ErrorStatus = ''.join(new)
+                print ErrorStatus
+         if frame_data[1] == "05":
+                print "Error 5"
+                new = list(ErrorStatus)
+                new[27] = '1'
+                ErrorStatus = ''.join(new)
+                print ErrorStatus
+         if frame_data[1] == "06":
+                print "Error 6"
+                new = list(ErrorStatus)
+                new[26] = '1'
+                ErrorStatus = ''.join(new)
+                print ErrorStatus
+         if frame_data[1] == "07":
+                print "Error 7"
+                new = list(ErrorStatus)
+                new[25] = '1'
+                ErrorStatus = ''.join(new)
+                print ErrorStatus
 		
     if frame_data[0] == "11":
 	 print frame_data
@@ -675,6 +734,16 @@ def loop_data_PLC(a):
 	 dt_now_PLC = datetime( *new_datetime[:6])
 	 print dt_now_PLC
 
+    if frame_data[0] == "02":
+         answer_was = 1
+	 was_Mode = Mode
+	 if frame_data[2] == "00":
+		 Mode = "00"
+	         print "Get subsystem mode: STOP"
+	 if frame_data[2] == "01":
+		 Mode = "01"
+                 print "Get subsystem mode: RUN"
+
     if frame_data[0] == "03":
 	 answer_was = 1
 	 if frame_data[1] == "00":
@@ -683,8 +752,25 @@ def loop_data_PLC(a):
 	  new[int(frame_data[2])] = float(frame_data[3])
 
 Get_sample = 1
+
 def SampleTime(a):
     global Get_sample    
+    global was_ErrorStatus
+    global ErrorStatus
+    global was_Mode
+    global Mode
+    if was_ErrorStatus <>  ErrorStatus:
+         sensor = "MasterStatus"
+         serial_port_electron.write(str(sensor) + ",1800,"+ ErrorStatus +"\r");
+         serial_port_electron.flushOutput()
+         sleep(10)
+
+    if was_Mode <> Mode:
+         sensor = "MasterMode"
+         serial_port_electron.write(str(sensor) + ",1800,"+ Mode +"\r");
+         serial_port_electron.flushOutput()
+         sleep(10)
+
     Get_sample = 1
 
 def customHandler():
@@ -709,20 +795,19 @@ loop1 = LoopingCall(f=loop_30min, a=(context,))
 loop1.start(1800, now=False).addErrback(fail) # initially delay by time
 
 loop_s = LoopingCall(f=SampleTime, a=(context,))
-loop_s.start(180, now=False).addErrback(fail) # initially delay by time
-
+loop_s.start(10, now=False).addErrback(fail) # initially delay by time
 
 loop2 = LoopingCall(f=updating_writer, a=(context,))
-loop2.start(0.1, now=False).addErrback(fail) # initially delay by time
+loop2.start(0.01, now=False).addErrback(fail) # initially delay by time
 
 loop3 = LoopingCall(f=loop_data_PLC, a=(context,))
-loop3.start(1, now=False).addErrback(fail) # initially delay by time
+loop3.start(0.01, now=False).addErrback(fail) # initially delay by time
 
 loop_Electron_read = LoopingCall(f=electron_read, a=(context,))
-loop_Electron_read.start(1, now=False).addErrback(fail) # initially delay by time
+loop_Electron_read.start(0.01, now=False).addErrback(fail) # initially delay by time
 
 loop_cloud = LoopingCall(f=updating_cloud, a=(context,))
-loop_cloud.start(1, now=False).addErrback(fail) # initially delay by time
+loop_cloud.start(0.01, now=False).addErrback(fail) # initially delay by time
 
 reactor.addSystemEventTrigger('before', 'shutdown', customHandler)
 reactor.run()
